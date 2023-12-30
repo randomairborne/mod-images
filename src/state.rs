@@ -2,13 +2,13 @@ use std::{str::FromStr, sync::Arc};
 
 use deadpool_redis::{Manager, Pool, Runtime};
 use oauth2::{basic::BasicClient, AuthUrl, ClientId, ClientSecret, RevocationUrl, TokenUrl};
+use redis::AsyncCommands;
 use reqwest::{Client, ClientBuilder};
 use s3::{creds::Credentials, Bucket, Region};
 use tera::Tera;
-use twilight_model::id::{
-    marker::{GuildMarker, RoleMarker},
-    Id,
-};
+use twilight_model::id::{marker::GuildMarker, Id};
+
+use crate::Error;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -16,7 +16,6 @@ pub struct AppState {
     pub tera: Arc<Tera>,
     pub http: Client,
     pub redis: Pool,
-    pub allowed_roles: Arc<[Id<RoleMarker>]>,
     pub guild: Id<GuildMarker>,
     pub oauth: Arc<BasicClient>,
 }
@@ -28,19 +27,32 @@ impl AppState {
             tera: get_tera().into(),
             http: get_http(),
             redis: get_redis().await,
-            allowed_roles: get_roles().into(),
             guild: parse_var("GUILD"),
             oauth: get_oauth().into(),
         }
+    }
+
+    pub async fn redis_exists(&self, key: &str) -> Result<bool, Error> {
+        let value: Option<bool> = self.redis.get().await?.get(key).await?;
+        Ok(value.is_some())
     }
 }
 
 fn get_bucket() -> Bucket {
     let name: String = parse_var("BUCKET_NAME");
-    let account_id = parse_var("R2_ACCOUNT_ID");
-    let access_token: String = parse_var("R2_ACCESS_TOKEN");
-    let region = Region::R2 { account_id };
-    let credentials = Credentials::new(Some(&access_token), None, None, None, None).unwrap();
+    let endpoint = parse_var("S3_ENDPOINT");
+    let region = parse_var("S3_REGION");
+    let access_key_id: String = parse_var("S3_ACCESS_KEY_ID");
+    let secret_access_key: String = parse_var("S3_SECRET_ACCESS_KEY");
+    let region = Region::Custom { region, endpoint };
+    let credentials = Credentials::new(
+        Some(&access_key_id),
+        Some(&secret_access_key),
+        None,
+        None,
+        None,
+    )
+    .unwrap();
     Bucket::new(&name, region, credentials).unwrap()
 }
 
@@ -59,11 +71,6 @@ fn get_tera() -> Tera {
     let mut tera = Tera::new("./templates/*.jinja").unwrap();
     tera.autoescape_on(vec!["jinja"]);
     tera
-}
-
-fn get_roles() -> Vec<Id<RoleMarker>> {
-    let roles_str: String = parse_var("ROLES");
-    roles_str.split(',').map(|v| v.parse().unwrap()).collect()
 }
 
 async fn get_redis() -> Pool {

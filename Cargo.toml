@@ -4,53 +4,55 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = { version = "0.6", features = ["macros"] }
-axum-extra = { version = "0.8", features = ["cookie"] }
-base64 = "0.21"
-dotenvy = "0.15"
-oauth2 = "4.4"
-rand = "0.8"
-rust-s3 = "0.33"
-serde_json = "1"
-tera = "1"
-thiserror = "1.0"
-tracing = "0.1"
+twilight-validate = "0.15"
 twilight-model = "0.15"
+twilight-http = "0.15"
+rust-s3 = "0.33"
+dotenvy = "0.15"
+tracing = "0.1"
+thiserror = "1"
+image = "0.24"
+oauth2 = "4"
+rand = "0.8"
+time = "0.3"
+tera = "1"
+vss = "0.1"
+
+[dependencies.axum]
+version = "0.7"
+features = ["macros"]
+
+[dependencies.tower-http]
+version = "0.5"
+features = ["compression-full", "fs"]
+
+[dependencies.axum-extra]
+version = "0.9"
+features = ["cookie"]
 
 [dependencies.deadpool-redis]
 version = "0.14"
 features = ["rt_tokio_1", "serde_1"]
-optional = false
 default-features = false
 
 [dependencies.redis]
 version = "0.24"
 features = ["ahash", "aio", "tokio-comp", "acl", "json", "cluster"]
-optional = false
 default-features = false
 
 [dependencies.reqwest]
 version = "0.11"
 features = ["json", "rustls-tls"]
-optional = false
 default-features = false
 
 [dependencies.serde]
 version = "1.0"
 features = ["derive"]
-optional = false
 
 [dependencies.tokio]
 version = "1"
 features = ["rt-multi-thread", "macros", "signal"]
-optional = false
 
 [dependencies.tracing-subscriber]
 version = "0.3"
 features = ["env-filter"]
-optional = false
-
-[dependencies.twilight-util]
-version = "0.15"
-features = ["builder", "link"]
-optional = false

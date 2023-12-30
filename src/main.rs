@@ -1,30 +1,54 @@
-use axum::{response::Response, routing::get, Router};
+use std::net::SocketAddr;
+
+use axum::{
+    http::StatusCode,
+    response::Response,
+    routing::{get, post},
+    Router,
+};
+use axum_extra::routing::RouterExt;
 use rand::{distributions::Alphanumeric, Rng};
-use reqwest::StatusCode;
-pub use state::AppState;
+use tokio::net::TcpListener;
+use tower_http::{compression::CompressionLayer, services::ServeDir};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+pub use crate::state::AppState;
 
 mod auth;
 mod handler;
 mod state;
 
+#[macro_use]
+extern crate tracing;
+
 #[tokio::main]
 async fn main() {
+    dotenvy::dotenv().ok();
     start_tracing();
     let state = AppState::new().await;
+    let client_dir = std::env::var("CLIENT_DIR").unwrap_or_else(|_v| "./client/".to_string());
+    let serve_dir = ServeDir::new(&client_dir)
+        .append_index_html_on_directories(false)
+        .precompressed_br()
+        .precompressed_deflate()
+        .precompressed_zstd();
     let app = Router::new()
         .route("/", get(handler::index))
-        .route("/:id", get(handler::view))
+        .route_with_tsr("/:id", get(handler::view))
+        .route("/upload", post(handler::upload))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             auth::middleware,
         ))
-        .route("/oauth2", get(auth::redirect))
         .route("/oauth2/callback", get(auth::authenticate))
+        .nest_service("/client/", serve_dir)
+        .layer(CompressionLayer::new())
         .with_state(state);
-    axum::Server::bind(&([0, 0, 0, 0], 8080).into())
-        .serve(app.into_make_service())
-        .with_graceful_shutdown(shutdown_signal())
+    let bind_address = SocketAddr::from(([0, 0, 0, 0], 8080));
+    let tcp = TcpListener::bind(bind_address).await.unwrap();
+    info!(%bind_address, "Server listening on socket");
+    axum::serve(tcp, app)
+        .with_graceful_shutdown(vss::shutdown_signal())
         .await
         .unwrap();
 }
@@ -39,8 +63,18 @@ pub enum Error {
     DeadpoolRedis(#[from] deadpool_redis::PoolError),
     #[error("HTTP error")]
     Http(#[from] reqwest::Error),
+    #[error("Discord API HTTP error")]
+    DiscordApiRequestValidate(#[from] twilight_validate::request::ValidationError),
+    #[error("Discord API HTTP error")]
+    DiscordApiHttp(#[from] twilight_http::Error),
+    #[error("Discord API model error")]
+    DiscordApiDeserializeModel(#[from] twilight_http::response::DeserializeBodyError),
     #[error("Templating error")]
     Tera(#[from] tera::Error),
+    #[error("Image load error")]
+    Image(#[from] image::ImageError),
+    #[error("Join error")]
+    Join(#[from] tokio::task::JoinError),
     #[error("Invalid OAuth2 State")]
     InvalidState,
     #[error("OAuth2 Code Exchange failed")]
@@ -53,7 +87,13 @@ pub enum Error {
 
 impl axum::response::IntoResponse for Error {
     fn into_response(self) -> Response {
-        (self.status(), self.to_string()).into_response()
+        let status = self.status();
+        if status == StatusCode::INTERNAL_SERVER_ERROR {
+            error!(source = ?self, "Error handling request");
+        } else {
+            debug!(source = ?self, "Failed to handle request");
+        }
+        (status, self.to_string()).into_response()
     }
 }
 
@@ -64,37 +104,27 @@ impl Error {
             | Error::Redis(_)
             | Error::DeadpoolRedis(_)
             | Error::Http(_)
-            | Error::Tera(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Error::InvalidState | Error::CodeExchangeFailed => StatusCode::BAD_REQUEST,
+            | Error::DiscordApiRequestValidate(_)
+            | Error::DiscordApiHttp(_)
+            | Error::DiscordApiDeserializeModel(_)
+            | Error::Tera(_)
+            | Error::Join(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Error::InvalidState | Error::CodeExchangeFailed | Error::Image(_) => {
+                StatusCode::BAD_REQUEST
+            }
             Error::NoPermissions => StatusCode::FORBIDDEN,
             Error::Unauthorized => StatusCode::UNAUTHORIZED,
         }
     }
 }
 
-async fn shutdown_signal() {
-    #[cfg(target_family = "unix")]
-    {
-        use tokio::signal::unix::{signal, SignalKind};
-        let mut interrupt = signal(SignalKind::interrupt()).expect("Failed to listen to sigint");
-        let mut quit = signal(SignalKind::quit()).expect("Failed to listen to sigquit");
-        let mut terminate = signal(SignalKind::terminate()).expect("Failed to listen to sigterm");
-
-        tokio::select! {
-            _ = interrupt.recv() => {},
-            _ = quit.recv() => {},
-            _ = terminate.recv() => {}
-        }
-    }
-    #[cfg(not(target_family = "unix"))]
-    tokio::signal::ctrl_c()
-        .await
-        .expect("Failed to listen to ctrl+c");
-}
-
 pub fn start_tracing() {
     let env_filter = tracing_subscriber::EnvFilter::builder()
-        .with_default_directive(concat!(env!("CARGO_PKG_NAME"), "=info").parse().unwrap())
+        .with_default_directive(
+            format!("{}=info", env!("CARGO_PKG_NAME").replace('-', "_"))
+                .parse()
+                .unwrap(),
+        )
         .with_env_var("LOG")
         .from_env()
         .expect("failed to parse env");
