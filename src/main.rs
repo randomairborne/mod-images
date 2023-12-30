@@ -45,6 +45,7 @@ async fn main() {
         .layer(CompressionLayer::new())
         .with_state(state);
     let bind_address = SocketAddr::from(([0, 0, 0, 0], 8080));
+    info!(%bind_address, "Binding to address");
     let tcp = TcpListener::bind(bind_address).await.unwrap();
     info!(%bind_address, "Server listening on socket");
     axum::serve(tcp, app)
