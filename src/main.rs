@@ -7,6 +7,7 @@ use axum::{
     Router,
 };
 use axum_extra::routing::RouterExt;
+use oauth2::basic::BasicRequestTokenError;
 use rand::{distributions::Alphanumeric, Rng};
 use tokio::net::TcpListener;
 use tower_http::{compression::CompressionLayer, services::ServeDir};
@@ -53,6 +54,11 @@ async fn main() {
         .unwrap();
 }
 
+type CodeExchangeFailure = oauth2::RequestTokenError<
+    oauth2::reqwest::Error<reqwest::Error>,
+    oauth2::StandardErrorResponse<oauth2::basic::BasicErrorResponseType>,
+>;
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("S3 error")]
@@ -77,10 +83,10 @@ pub enum Error {
     OAuth2Url(#[from] oauth2::url::ParseError),
     #[error("Join error")]
     Join(#[from] tokio::task::JoinError),
+    #[error("OAuth2 Code Exchange failed")]
+    CodeExchangeFailed(#[from] CodeExchangeFailure),
     #[error("Invalid OAuth2 State")]
     InvalidState,
-    #[error("OAuth2 Code Exchange failed")]
-    CodeExchangeFailed,
     #[error("You do not have the required role to access this application")]
     NoPermissions,
     #[error("You must authenticate to use this application")]
@@ -112,7 +118,7 @@ impl Error {
             | Error::Tera(_)
             | Error::Join(_)
             | Error::OAuth2Url(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Error::InvalidState | Error::CodeExchangeFailed | Error::Image(_) => {
+            Error::InvalidState | Error::CodeExchangeFailed(_) | Error::Image(_) => {
                 StatusCode::BAD_REQUEST
             }
             Error::NoPermissions => StatusCode::FORBIDDEN,

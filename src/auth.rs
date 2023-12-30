@@ -77,8 +77,7 @@ pub async fn authenticate(
         .exchange_code(AuthorizationCode::new(query.code))
         .set_pkce_verifier(pkce_verifier)
         .request_async(async_http_client)
-        .await
-        .map_err(|_| Error::CodeExchangeFailed)?;
+        .await?;
     let token = format!("Bearer {}", token_response.access_token().secret());
     let client = ClientBuilder::new().token(token).build();
     let guilds = client
