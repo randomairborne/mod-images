@@ -86,7 +86,10 @@ fn get_http() -> Client {
 
 fn get_tera() -> Tera {
     trace!("Loading templates");
-    let glob = format!("{}/**/*.jinja", AppState::asset_dir().trim_end_matches('/'));
+    let glob = format!(
+        "{}/**/*.jinja",
+        AppState::template_dir().trim_end_matches('/')
+    );
     let mut tera = Tera::new(&glob).unwrap();
     tera.autoescape_on(vec!["jinja"]);
     for template in tera.get_template_names() {

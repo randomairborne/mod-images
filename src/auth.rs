@@ -40,6 +40,7 @@ pub async fn middleware(
 async fn oauthify(state: AppState) -> Result<Redirect, Error> {
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
     let redirect = RedirectUrl::new(format!("{}/oauth2/callback", state.root_url))?;
+    trace!("Build redirect url", redirect);
     let (auth_url, csrf_token) = state
         .oauth
         .authorize_url(CsrfToken::new_random)

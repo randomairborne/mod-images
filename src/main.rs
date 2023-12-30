@@ -7,7 +7,6 @@ use axum::{
     Router,
 };
 use axum_extra::routing::RouterExt;
-use oauth2::basic::BasicRequestTokenError;
 use rand::{distributions::Alphanumeric, Rng};
 use tokio::net::TcpListener;
 use tower_http::{compression::CompressionLayer, services::ServeDir};
