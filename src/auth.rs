@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use axum::{
     extract::{Query, Request, State},
     middleware::Next,
@@ -9,7 +11,7 @@ use axum_extra::extract::{
 };
 use oauth2::{
     basic::BasicTokenResponse, reqwest::async_http_client, AuthorizationCode, CsrfToken,
-    PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
+    PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, Scope, TokenResponse,
 };
 use redis::AsyncCommands;
 use time::Duration;
@@ -37,11 +39,13 @@ pub async fn middleware(
 
 async fn oauthify(state: AppState) -> Result<Redirect, Error> {
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
+    let redirect = RedirectUrl::new(format!("{}/oauth2/callback", state.root_url))?;
     let (auth_url, csrf_token) = state
         .oauth
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new("identify guilds".to_string()))
         .set_pkce_challenge(pkce_challenge)
+        .set_redirect_uri(Cow::Owned(redirect))
         .url();
     state
         .redis

@@ -26,7 +26,7 @@ async fn main() {
     dotenvy::dotenv().ok();
     start_tracing();
     let state = AppState::new().await;
-    let serve_dir = ServeDir::new(&AppState::asset_dir())
+    let serve_dir = ServeDir::new(AppState::asset_dir())
         .append_index_html_on_directories(false)
         .precompressed_br()
         .precompressed_deflate()
@@ -73,6 +73,8 @@ pub enum Error {
     Tera(#[from] tera::Error),
     #[error("Image load error")]
     Image(#[from] image::ImageError),
+    #[error("OAuth2 URL parse error")]
+    OAuth2Url(#[from] oauth2::url::ParseError),
     #[error("Join error")]
     Join(#[from] tokio::task::JoinError),
     #[error("Invalid OAuth2 State")]
@@ -108,7 +110,8 @@ impl Error {
             | Error::DiscordApiHttp(_)
             | Error::DiscordApiDeserializeModel(_)
             | Error::Tera(_)
-            | Error::Join(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            | Error::Join(_)
+            | Error::OAuth2Url(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Error::InvalidState | Error::CodeExchangeFailed | Error::Image(_) => {
                 StatusCode::BAD_REQUEST
             }

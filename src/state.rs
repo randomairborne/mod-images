@@ -18,6 +18,7 @@ pub struct AppState {
     pub redis: Pool,
     pub guild: Id<GuildMarker>,
     pub oauth: Arc<BasicClient>,
+    pub root_url: Arc<str>,
 }
 
 impl AppState {
@@ -30,6 +31,7 @@ impl AppState {
             redis: get_redis().await,
             guild: parse_var("GUILD"),
             oauth: get_oauth().into(),
+            root_url: get_root_url().into(),
         }
     }
 
@@ -45,6 +47,11 @@ impl AppState {
     pub fn template_dir() -> String {
         std::env::var("TEMPLATE_DIR").unwrap_or_else(|_v| "./templates/".to_string())
     }
+}
+
+fn get_root_url() -> String {
+    let original: String = parse_var("ROOT_URL");
+    original.trim_end_matches('/').to_owned()
 }
 
 fn get_bucket() -> Bucket {
