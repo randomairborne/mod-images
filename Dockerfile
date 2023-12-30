@@ -4,7 +4,7 @@ RUN apk add zstd brotli gzip
 
 COPY . .
 
-RUN find ./client/dist/ -type f ! -name "*.png" -exec gzip -k9 '{}' \; -exec brotli -k9 '{}' \; -exec zstd -qk19 '{}' \;
+RUN find ./client/ -type f ! -name "*.png" -exec gzip -k9 '{}' \; -exec brotli -k9 '{}' \; -exec zstd -qk19 '{}' \;
 
 FROM rust:alpine AS server-builder
 
