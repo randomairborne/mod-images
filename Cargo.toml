@@ -7,12 +7,10 @@ edition = "2021"
 twilight-validate = "0.15"
 twilight-model = "0.15"
 twilight-http = "0.15"
-rust-s3 = "0.33"
 dotenvy = "0.15"
 tracing = "0.1"
 thiserror = "1"
 image = "0.24"
-oauth2 = "4"
 rand = "0.8"
 time = "0.3"
 tera = "1"
@@ -21,6 +19,16 @@ vss = "0.1"
 [dependencies.axum]
 version = "0.7"
 features = ["macros"]
+
+[dependencies.rust-s3]
+version = "0.33"
+features = ["tags", "tokio-rustls-tls", "fail-on-err", "reqwest"]
+default-features = false
+
+[dependencies.oauth2]
+version = "4"
+features = ["rustls-tls", "reqwest"]
+default-features = false
 
 [dependencies.tower-http]
 version = "0.5"
