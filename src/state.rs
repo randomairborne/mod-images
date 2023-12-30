@@ -1,7 +1,9 @@
 use std::{str::FromStr, sync::Arc};
 
 use deadpool_redis::{Manager, Pool, Runtime};
-use oauth2::{basic::BasicClient, AuthUrl, ClientId, ClientSecret, RevocationUrl, TokenUrl};
+use oauth2::{
+    basic::BasicClient, AuthUrl, ClientId, ClientSecret, RedirectUrl, RevocationUrl, TokenUrl,
+};
 use redis::AsyncCommands;
 use reqwest::{Client, ClientBuilder};
 use s3::{creds::Credentials, Bucket, Region};
@@ -18,7 +20,6 @@ pub struct AppState {
     pub redis: Pool,
     pub guild: Id<GuildMarker>,
     pub oauth: Arc<BasicClient>,
-    pub root_url: Arc<str>,
 }
 
 impl AppState {
@@ -31,7 +32,6 @@ impl AppState {
             redis: get_redis().await,
             guild: parse_var("GUILD"),
             oauth: get_oauth().into(),
-            root_url: get_root_url().into(),
         }
     }
 
@@ -47,11 +47,6 @@ impl AppState {
     pub fn template_dir() -> String {
         std::env::var("TEMPLATE_DIR").unwrap_or_else(|_v| "./templates/".to_string())
     }
-}
-
-fn get_root_url() -> String {
-    let original: String = parse_var("ROOT_URL");
-    original.trim_end_matches('/').to_owned()
 }
 
 fn get_bucket() -> Bucket {
@@ -119,12 +114,17 @@ async fn get_redis() -> Pool {
 fn get_oauth() -> BasicClient {
     let client_id = ClientId::new(parse_var("CLIENT_ID"));
     let client_secret = ClientSecret::new(parse_var("CLIENT_SECRET"));
+    let root_url: String = parse_var("ROOT_URL");
+    let root_url = root_url.trim_end_matches('/');
     let auth_url = AuthUrl::new("https://discord.com/oauth2/authorize".to_owned()).unwrap();
     let token_url = TokenUrl::new("https://discord.com/api/oauth2/token".to_owned()).unwrap();
     let revocation_url =
         RevocationUrl::new("https://discord.com/api/oauth2/token/revoke".to_owned()).unwrap();
+    let redirect_url = RedirectUrl::new(format!("{root_url}/oauth2/callback")).unwrap();
+    trace!(?redirect_url, "Built redirect url");
     BasicClient::new(client_id, Some(client_secret), auth_url, Some(token_url))
         .set_revocation_uri(revocation_url)
+        .set_redirect_uri(redirect_url)
 }
 
 fn parse_var<T>(name: &str) -> T
