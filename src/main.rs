@@ -26,8 +26,7 @@ async fn main() {
     dotenvy::dotenv().ok();
     start_tracing();
     let state = AppState::new().await;
-    let client_dir = std::env::var("CLIENT_DIR").unwrap_or_else(|_v| "./client/".to_string());
-    let serve_dir = ServeDir::new(&client_dir)
+    let serve_dir = ServeDir::new(&AppState::asset_dir())
         .append_index_html_on_directories(false)
         .precompressed_br()
         .precompressed_deflate()
@@ -41,7 +40,7 @@ async fn main() {
             auth::middleware,
         ))
         .route("/oauth2/callback", get(auth::authenticate))
-        .nest_service("/client/", serve_dir)
+        .nest_service("/assets/", serve_dir)
         .layer(CompressionLayer::new())
         .with_state(state);
     let bind_address = SocketAddr::from(([0, 0, 0, 0], 8080));

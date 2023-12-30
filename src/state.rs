@@ -37,6 +37,14 @@ impl AppState {
         let value: Option<bool> = self.redis.get().await?.get(key).await?;
         Ok(value.is_some())
     }
+
+    pub fn asset_dir() -> String {
+        std::env::var("ASSET_DIR").unwrap_or_else(|_v| "./assets/".to_string())
+    }
+
+    pub fn template_dir() -> String {
+        std::env::var("TEMPLATE_DIR").unwrap_or_else(|_v| "./templates/".to_string())
+    }
 }
 
 fn get_bucket() -> Bucket {
@@ -71,7 +79,8 @@ fn get_http() -> Client {
 
 fn get_tera() -> Tera {
     trace!("Loading templates");
-    let mut tera = Tera::new("./templates/*.jinja").unwrap();
+    let glob = format!("{}/**/*.jinja", AppState::asset_dir().trim_end_matches('/'));
+    let mut tera = Tera::new(&glob).unwrap();
     tera.autoescape_on(vec!["jinja"]);
     for template in tera.get_template_names() {
         trace!(template, "Loaded template");
