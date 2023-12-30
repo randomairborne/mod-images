@@ -22,6 +22,7 @@ pub struct AppState {
 
 impl AppState {
     pub async fn new() -> Self {
+        trace!("Building state");
         Self {
             bucket: get_bucket().into(),
             tera: get_tera().into(),
@@ -39,6 +40,7 @@ impl AppState {
 }
 
 fn get_bucket() -> Bucket {
+    trace!("Connecting to S3");
     let name: String = parse_var("BUCKET_NAME");
     let endpoint = parse_var("S3_ENDPOINT");
     let region = parse_var("S3_REGION");
@@ -68,19 +70,30 @@ fn get_http() -> Client {
 }
 
 fn get_tera() -> Tera {
+    trace!("Loading templates");
     let mut tera = Tera::new("./templates/*.jinja").unwrap();
     tera.autoescape_on(vec!["jinja"]);
+    for template in tera.get_template_names() {
+        trace!(template, "Loaded template");
+    }
+    trace!(
+        "Loaded {} tera templates",
+        tera.get_template_names().count()
+    );
     tera
 }
 
 async fn get_redis() -> Pool {
+    trace!("Loading redis");
     let url: String = parse_var("REDIS_URL");
     let redis_mgr = Manager::new(url).expect("failed to connect to redis");
     let redis = Pool::builder(redis_mgr)
         .runtime(Runtime::Tokio1)
         .build()
         .unwrap();
+    trace!("Loaded redis, testing connection..");
     redis.get().await.expect("Failed to load redis");
+    trace!("Redis connection succeeded");
     redis
 }
 
