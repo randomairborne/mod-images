@@ -47,7 +47,7 @@ pub fn router(state: AppState) -> Router {
         .route("/", get(handler::index))
         .route("/upload", post(handler::upload));
     let auth = axum::middleware::from_fn_with_state(state.clone(), auth::middleware);
-    if std::env::var("PUBLICLY_READABLE").is_ok() {
+    if std::env::var("PUBLICLY_READABLE").is_ok_and(check_truthy) {
         router = router
             .route_with_tsr("/:id", get(handler::view))
             .layer(auth)
@@ -61,6 +61,11 @@ pub fn router(state: AppState) -> Router {
         .nest_service("/assets/", serve_dir)
         .layer(CompressionLayer::new())
         .with_state(state)
+}
+
+fn check_truthy(data: String) -> bool {
+    let d = data.to_ascii_lowercase();
+    !(d == "f" || d == "false" || d == "0" || d == "n" || d == "no")
 }
 
 type CodeExchangeFailure = oauth2::RequestTokenError<
