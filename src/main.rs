@@ -26,23 +26,7 @@ async fn main() {
     dotenvy::dotenv().ok();
     start_tracing();
     let state = AppState::new().await;
-    let serve_dir = ServeDir::new(AppState::asset_dir())
-        .append_index_html_on_directories(false)
-        .precompressed_br()
-        .precompressed_deflate()
-        .precompressed_zstd();
-    let app = Router::new()
-        .route("/", get(handler::index))
-        .route_with_tsr("/:id", get(handler::view))
-        .route("/upload", post(handler::upload))
-        .layer(axum::middleware::from_fn_with_state(
-            state.clone(),
-            auth::middleware,
-        ))
-        .route("/oauth2/callback", get(auth::authenticate))
-        .nest_service("/assets/", serve_dir)
-        .layer(CompressionLayer::new())
-        .with_state(state);
+    let app = router(state);
     let bind_address = SocketAddr::from(([0, 0, 0, 0], 8080));
     info!(%bind_address, "Binding to address");
     let tcp = TcpListener::bind(bind_address).await.unwrap();
@@ -51,6 +35,32 @@ async fn main() {
         .with_graceful_shutdown(vss::shutdown_signal())
         .await
         .unwrap();
+}
+
+pub fn router(state: AppState) -> Router {
+    let serve_dir = ServeDir::new(AppState::asset_dir())
+        .append_index_html_on_directories(false)
+        .precompressed_br()
+        .precompressed_deflate()
+        .precompressed_zstd();
+    let mut router = Router::new()
+        .route("/", get(handler::index))
+        .route("/upload", post(handler::upload));
+    let auth = axum::middleware::from_fn_with_state(state.clone(), auth::middleware);
+    if std::env::var("PUBLICLY_READABLE").is_ok() {
+        router = router
+            .route_with_tsr("/:id", get(handler::view))
+            .layer(auth)
+    } else {
+        router = router
+            .layer(auth)
+            .route_with_tsr("/:id", get(handler::view))
+    }
+    router
+        .route("/oauth2/callback", get(auth::authenticate))
+        .nest_service("/assets/", serve_dir)
+        .layer(CompressionLayer::new())
+        .with_state(state)
 }
 
 type CodeExchangeFailure = oauth2::RequestTokenError<
