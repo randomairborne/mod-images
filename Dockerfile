@@ -1,10 +1,12 @@
 FROM alpine AS client-builder
 
-RUN apk add zstd brotli gzip
+RUN apk add zstd brotli pigz
 
-COPY . .
+WORKDIR /assets/
 
-RUN find ./assets/ -type f ! -name "*.png" -exec gzip -k9 '{}' \; -exec brotli -k9 '{}' \; -exec zstd -qk19 '{}' \;
+COPY assets .
+
+RUN find /assets -type f ! -name "*.png" -exec pigz -k9 '{}' \; -exec pigz -zk9 '{}' \; -exec brotli -k9 '{}' \; -exec zstd -qk19 '{}' \;
 
 FROM rust:alpine AS server-builder
 
@@ -17,7 +19,7 @@ RUN cargo build --release
 FROM alpine
 
 COPY --from=server-builder ./target/release/mod-images /usr/bin/mod-images
-COPY --from=client-builder assets/ /var/www/mod-images/assets/
+COPY --from=client-builder /assets/ /var/www/mod-images/assets/
 COPY /templates/ /var/www/mod-images/templates/
 
 ENV ASSET_DIR="/var/www/mod-images/assets/"

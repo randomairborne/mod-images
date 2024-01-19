@@ -42,6 +42,7 @@ pub fn router(state: AppState) -> Router {
         .append_index_html_on_directories(false)
         .precompressed_br()
         .precompressed_deflate()
+        .precompressed_gzip()
         .precompressed_zstd();
     let mut router = Router::new()
         .route("/", get(handler::index))
