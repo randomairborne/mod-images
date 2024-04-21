@@ -50,12 +50,12 @@ pub fn router(state: AppState) -> Router {
     let auth = axum::middleware::from_fn_with_state(state.clone(), auth::middleware);
     if std::env::var("PUBLICLY_READABLE").is_ok_and(check_truthy) {
         router = router
-            .route_with_tsr("/:id", get(handler::view))
             .layer(auth)
+            .route_with_tsr("/:id", get(handler::view))
     } else {
         router = router
-            .layer(auth)
             .route_with_tsr("/:id", get(handler::view))
+            .layer(auth)
     }
     router
         .route("/oauth2/callback", get(auth::authenticate))
