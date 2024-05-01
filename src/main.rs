@@ -7,6 +7,9 @@ use axum::{
     Router,
 };
 use axum_extra::routing::RouterExt;
+use oauth2::{
+    basic::BasicErrorResponseType, HttpClientError, RequestTokenError, StandardErrorResponse,
+};
 use rand::{distributions::Alphanumeric, Rng};
 use tokio::net::TcpListener;
 use tower_http::{compression::CompressionLayer, services::ServeDir};
@@ -69,9 +72,12 @@ fn check_truthy(data: String) -> bool {
     !(d == "f" || d == "false" || d == "0" || d == "n" || d == "no")
 }
 
-type CodeExchangeFailure = oauth2::RequestTokenError<
-    oauth2::reqwest::Error<reqwest::Error>,
-    oauth2::StandardErrorResponse<oauth2::basic::BasicErrorResponseType>,
+type CodeExchangeFailure =
+    RequestTokenError<reqwest::Error, StandardErrorResponse<BasicErrorResponseType>>;
+
+type RequestTokenFailure = RequestTokenError<
+    HttpClientError<reqwest::Error>,
+    StandardErrorResponse<BasicErrorResponseType>,
 >;
 
 #[derive(thiserror::Error, Debug)]
@@ -80,8 +86,6 @@ pub enum Error {
     S3(#[from] s3::error::S3Error),
     #[error("Redis error")]
     Redis(#[from] redis::RedisError),
-    #[error("Redis pool error")]
-    DeadpoolRedis(#[from] deadpool_redis::PoolError),
     #[error("HTTP error")]
     Http(#[from] reqwest::Error),
     #[error("Discord API HTTP error")]
@@ -94,6 +98,8 @@ pub enum Error {
     Tera(#[from] tera::Error),
     #[error("Image load error")]
     Image(#[from] image::ImageError),
+    #[error("OAuth2 token error")]
+    OAuth2RequestToken(#[from] RequestTokenFailure),
     #[error("OAuth2 URL parse error")]
     OAuth2Url(#[from] oauth2::url::ParseError),
     #[error("Join error")]
@@ -125,14 +131,14 @@ impl Error {
         match self {
             Error::S3(_)
             | Error::Redis(_)
-            | Error::DeadpoolRedis(_)
             | Error::Http(_)
             | Error::DiscordApiRequestValidate(_)
             | Error::DiscordApiHttp(_)
             | Error::DiscordApiDeserializeModel(_)
             | Error::Tera(_)
             | Error::Join(_)
-            | Error::OAuth2Url(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            | Error::OAuth2Url(_)
+            | Error::OAuth2RequestToken(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Error::InvalidState | Error::CodeExchangeFailed(_) | Error::Image(_) => {
                 StatusCode::BAD_REQUEST
             }

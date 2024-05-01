@@ -1,10 +1,14 @@
 use std::{str::FromStr, sync::Arc};
 
-use deadpool_redis::{Manager, Pool, Runtime};
 use oauth2::{
-    basic::BasicClient, AuthUrl, ClientId, ClientSecret, RedirectUrl, RevocationUrl, TokenUrl,
+    basic::{
+        BasicClient, BasicErrorResponse, BasicRevocationErrorResponse,
+        BasicTokenIntrospectionResponse, BasicTokenResponse,
+    },
+    AuthUrl, ClientId, ClientSecret, EndpointNotSet, EndpointSet, RedirectUrl, RevocationUrl,
+    StandardRevocableToken, TokenUrl,
 };
-use redis::AsyncCommands;
+use redis::{aio::MultiplexedConnection, AsyncCommands};
 use reqwest::{Client, ClientBuilder};
 use s3::{creds::Credentials, Bucket, Region};
 use tera::Tera;
@@ -17,9 +21,9 @@ pub struct AppState {
     pub bucket: Arc<Bucket>,
     pub tera: Arc<Tera>,
     pub http: Client,
-    pub redis: Pool,
+    pub redis: MultiplexedConnection,
     pub guild: Id<GuildMarker>,
-    pub oauth: Arc<BasicClient>,
+    pub oauth: Arc<OAuth2Client>,
 }
 
 impl AppState {
@@ -35,8 +39,8 @@ impl AppState {
         }
     }
 
-    pub async fn redis_exists(&self, key: &str) -> Result<bool, Error> {
-        let value: Option<bool> = self.redis.get().await?.get(key).await?;
+    pub async fn redis_exists(&mut self, key: &str) -> Result<bool, Error> {
+        let value: Option<bool> = self.redis.get(key).await?;
         Ok(value.is_some())
     }
 
@@ -97,21 +101,33 @@ fn get_tera() -> Tera {
     tera
 }
 
-async fn get_redis() -> Pool {
+async fn get_redis() -> MultiplexedConnection {
     trace!("Loading redis");
     let url: String = parse_var("REDIS_URL");
-    let redis_mgr = Manager::new(url).expect("failed to connect to redis");
-    let redis = Pool::builder(redis_mgr)
-        .runtime(Runtime::Tokio1)
-        .build()
-        .unwrap();
+    let client = redis::Client::open(url).expect("Could not open redis connection");
     trace!("Loaded redis, testing connection..");
-    redis.get().await.expect("Failed to load redis");
+    let mux = client
+        .get_multiplexed_tokio_connection()
+        .await
+        .expect("Could not open mux connection");
     trace!("Redis connection succeeded");
-    redis
+    mux
 }
 
-fn get_oauth() -> BasicClient {
+type OAuth2Client = oauth2::Client<
+    BasicErrorResponse,
+    BasicTokenResponse,
+    BasicTokenIntrospectionResponse,
+    StandardRevocableToken,
+    BasicRevocationErrorResponse,
+    EndpointSet,
+    EndpointNotSet,
+    EndpointNotSet,
+    EndpointSet,
+    EndpointSet,
+>;
+
+fn get_oauth() -> OAuth2Client {
     let client_id = ClientId::new(parse_var("CLIENT_ID"));
     let client_secret = ClientSecret::new(parse_var("CLIENT_SECRET"));
     let root_url: String = parse_var("ROOT_URL");
@@ -122,8 +138,11 @@ fn get_oauth() -> BasicClient {
         RevocationUrl::new("https://discord.com/api/oauth2/token/revoke".to_owned()).unwrap();
     let redirect_url = RedirectUrl::new(format!("{root_url}/oauth2/callback")).unwrap();
     trace!(?redirect_url, "Built redirect url");
-    BasicClient::new(client_id, Some(client_secret), auth_url, Some(token_url))
-        .set_revocation_uri(revocation_url)
+    BasicClient::new(client_id)
+        .set_auth_uri(auth_url)
+        .set_client_secret(client_secret)
+        .set_token_uri(token_url)
+        .set_revocation_url(revocation_url)
         .set_redirect_uri(redirect_url)
 }
 

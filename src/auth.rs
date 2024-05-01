@@ -8,8 +8,8 @@ use axum_extra::extract::{
     CookieJar,
 };
 use oauth2::{
-    basic::BasicTokenResponse, reqwest::async_http_client, AuthorizationCode, CsrfToken,
-    PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
+    basic::BasicTokenResponse, AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier,
+    Scope, TokenResponse,
 };
 use redis::AsyncCommands;
 use time::Duration;
@@ -19,7 +19,7 @@ use twilight_model::{guild::Permissions, id::Id};
 use crate::{AppState, Error};
 
 pub async fn middleware(
-    State(state): State<AppState>,
+    State(mut state): State<AppState>,
     cookies: CookieJar,
     request: Request,
     next: Next,
@@ -35,7 +35,7 @@ pub async fn middleware(
     }
 }
 
-async fn oauthify(state: AppState) -> Result<Redirect, Error> {
+async fn oauthify(mut state: AppState) -> Result<Redirect, Error> {
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
     let (auth_url, csrf_token) = state
         .oauth
@@ -47,8 +47,6 @@ async fn oauthify(state: AppState) -> Result<Redirect, Error> {
         .url();
     state
         .redis
-        .get()
-        .await?
         .set_ex(
             format!("token:csrf:{}", csrf_token.secret()),
             pkce_verifier.secret(),
@@ -59,13 +57,11 @@ async fn oauthify(state: AppState) -> Result<Redirect, Error> {
 }
 
 pub async fn authenticate(
-    State(state): State<AppState>,
+    State(mut state): State<AppState>,
     Query(query): Query<SetIdQuery>,
 ) -> Result<(CookieJar, Redirect), Error> {
     let pkce_secret = state
         .redis
-        .get()
-        .await?
         .get_del::<String, Option<String>>(format!("token:csrf:{}", query.state))
         .await?
         .ok_or(Error::InvalidState)?;
@@ -74,7 +70,7 @@ pub async fn authenticate(
         .oauth
         .exchange_code(AuthorizationCode::new(query.code))
         .set_pkce_verifier(pkce_verifier)
-        .request_async(async_http_client)
+        .request_async(&state.http)
         .await?;
     let token = format!("Bearer {}", token_response.access_token().secret());
     let client = ClientBuilder::new().token(token).build();
@@ -95,8 +91,6 @@ pub async fn authenticate(
     let token = crate::randstring(64);
     state
         .redis
-        .get()
-        .await?
         .set_ex(format!("token:auth:{token}"), true, 86400)
         .await?;
     let cookie = Cookie::build(("token".to_owned(), token))
