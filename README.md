@@ -4,6 +4,8 @@ Sick of discord cutting off attachment links in modlogs? No more! With a private
 image-bin, just for your moderators, you can rest easy knowing that even a leaked
 modlog will lead to no harm.
 
+If you need this hosted, don't hesitate to [reach out](https://www.randomairborne.dev/contact/)
+
 ## Required environment variables
 
 - `BUCKET_NAME`: S3 Bucket name
