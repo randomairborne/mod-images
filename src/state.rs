@@ -73,7 +73,7 @@ fn get_http() -> Client {
     ClientBuilder::new()
         .user_agent(concat!(
             env!("CARGO_PKG_NAME"),
-            "",
+            "/",
             env!("CARGO_PKG_VERSION")
         ))
         .build()
