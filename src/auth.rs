@@ -85,7 +85,7 @@ pub async fn authenticate(
     let Some(guild) = guilds.first() else {
         return Err(Error::NoPermissions);
     };
-    if !guild.permissions.contains(Permissions::MODERATE_MEMBERS) {
+    if !guild.permissions.contains(Permissions::MODERATE_MEMBERS) || guild.id != state.guild {
         return Err(Error::NoPermissions);
     }
     let token = crate::randstring(64);
