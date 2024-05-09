@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc, time::Duration};
 
 use oauth2::{
     basic::{
@@ -107,7 +107,10 @@ async fn get_redis() -> MultiplexedConnection {
     let client = redis::Client::open(url).expect("Could not open redis connection");
     trace!("Loaded redis, testing connection..");
     let mux = client
-        .get_multiplexed_tokio_connection()
+        .get_multiplexed_tokio_connection_with_response_timeouts(
+            Duration::from_secs(5),
+            Duration::from_secs(10),
+        )
         .await
         .expect("Could not open mux connection");
     trace!("Redis connection succeeded");
