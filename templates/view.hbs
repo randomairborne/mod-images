@@ -1,0 +1,8 @@
+{% extends "base.hbs" %}
+{% block body %}
+<div class="center">
+    {% for img_src in img_srcs %}
+    <img src="{{ img_src }}" class="image">
+    {% endfor %}
+</div>
+{% endblock body %}
