@@ -4,7 +4,7 @@ WORKDIR /assets/
 
 COPY assets uncompressed
 
-RUN asset-squisher uncompressed compressed
+RUN asset-squisher uncompressed compressed --no-compress-images
 
 FROM rust:alpine AS server-builder
 
