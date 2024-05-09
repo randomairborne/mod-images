@@ -1,35 +1,31 @@
 use std::io::Cursor;
 
+use askama_axum::Template;
 use axum::{
     body::Bytes,
     extract::{Path, State},
-    response::Html,
     Json,
 };
 use image::ImageFormat;
 use serde::Serialize;
-use tera::Context;
 
 use crate::{AppState, Error};
 
-#[derive(Serialize)]
-pub struct Index {}
+#[derive(Template)]
+#[template(path = "index.hbs", ext = "html", escape = "html")]
+pub struct Index;
 
-pub async fn index(State(state): State<AppState>) -> Result<Html<String>, Error> {
-    let ctx = Index {};
-    let ctx = Context::from_serialize(ctx)?;
-    Ok(Html(state.tera.render("index.jinja", &ctx)?))
+pub async fn index() -> Index {
+    Index
 }
 
-#[derive(Serialize)]
+#[derive(Template)]
+#[template(path = "view.hbs", ext = "html", escape = "html")]
 pub struct View {
     img_srcs: Vec<String>,
 }
 
-pub async fn view(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-) -> Result<Html<String>, Error> {
+pub async fn view(State(state): State<AppState>, Path(id): Path<String>) -> Result<View, Error> {
     let bucket_listing = state.bucket.list(format!("{id}/"), None).await?;
     let mut img_srcs = Vec::new();
     for listing in bucket_listing {
@@ -40,11 +36,9 @@ pub async fn view(
         }
     }
     if img_srcs.is_empty() {
-        return Ok(Html(state.tera.render("404.jinja", &Context::new())?));
+        return Err(Error::NotFound);
     }
-    let ctx = View { img_srcs };
-    let ctx = Context::from_serialize(ctx)?;
-    Ok(Html(state.tera.render("view.jinja", &ctx)?))
+    Ok(View { img_srcs })
 }
 
 #[derive(Serialize)]

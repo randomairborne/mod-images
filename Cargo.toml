@@ -7,18 +7,22 @@ edition = "2021"
 twilight-validate = "0.15"
 twilight-model = "0.15"
 twilight-http = "0.15"
+askama_axum = "0.4"
 dotenvy = "0.15"
 tracing = "0.1"
 thiserror = "1"
 image = "0.25"
 rand = "0.8"
 time = "0.3"
-tera = "1"
 vss = "0.1"
 
 [dependencies.axum]
 version = "0.7"
 features = ["macros"]
+
+[dependencies.askama]
+version = "0.12"
+features = ["with-axum"]
 
 [dependencies.rust-s3]
 version = "0.33"

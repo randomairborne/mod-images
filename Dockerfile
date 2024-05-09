@@ -1,12 +1,10 @@
-FROM alpine AS client-builder
-
-RUN apk add zstd brotli pigz
+FROM ghcr.io/randomairborne/asset-squisher:latest AS client-builder
 
 WORKDIR /assets/
 
-COPY assets .
+COPY assets uncompressed
 
-RUN find /assets -type f ! -name "*.png" -exec pigz -k9 '{}' \; -exec pigz -zk9 '{}' \; -exec brotli -k9 '{}' \; -exec zstd -qk19 '{}' \;
+RUN asset-squisher uncompressed compressed
 
 FROM rust:alpine AS server-builder
 
@@ -19,9 +17,7 @@ RUN cargo build --release
 FROM alpine
 
 COPY --from=server-builder ./target/release/mod-images /usr/bin/mod-images
-COPY --from=client-builder /assets/ /var/www/mod-images/assets/
-COPY /templates/ /var/www/mod-images/templates/
+COPY --from=client-builder /assets/compressed/ /var/www/mod-images/assets/
 
 ENV ASSET_DIR="/var/www/mod-images/assets/"
-ENV TEMPLATE_DIR="/var/www/mod-images/templates/"
-ENTRYPOINT "/usr/bin/mod-images"
+CMD ["/usr/bin/mod-images"]

@@ -11,7 +11,6 @@ use oauth2::{
 use redis::{aio::MultiplexedConnection, AsyncCommands};
 use reqwest::{Client, ClientBuilder};
 use s3::{creds::Credentials, Bucket, Region};
-use tera::Tera;
 use twilight_model::id::{marker::GuildMarker, Id};
 
 use crate::Error;
@@ -19,7 +18,6 @@ use crate::Error;
 #[derive(Clone)]
 pub struct AppState {
     pub bucket: Arc<Bucket>,
-    pub tera: Arc<Tera>,
     pub http: Client,
     pub redis: MultiplexedConnection,
     pub guild: Id<GuildMarker>,
@@ -31,7 +29,6 @@ impl AppState {
         trace!("Building state");
         Self {
             bucket: get_bucket().into(),
-            tera: get_tera().into(),
             http: get_http(),
             redis: get_redis().await,
             guild: parse_var("GUILD"),
@@ -81,24 +78,6 @@ fn get_http() -> Client {
         ))
         .build()
         .unwrap()
-}
-
-fn get_tera() -> Tera {
-    trace!("Loading templates");
-    let glob = format!(
-        "{}/**/*.jinja",
-        AppState::template_dir().trim_end_matches('/')
-    );
-    let mut tera = Tera::new(&glob).unwrap();
-    tera.autoescape_on(vec!["jinja"]);
-    for template in tera.get_template_names() {
-        trace!(template, "Loaded template");
-    }
-    trace!(
-        "Loaded {} tera templates",
-        tera.get_template_names().count()
-    );
-    tera
 }
 
 async fn get_redis() -> MultiplexedConnection {

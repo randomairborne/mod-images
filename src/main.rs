@@ -1,8 +1,9 @@
 use std::net::SocketAddr;
 
+use askama_axum::Template;
 use axum::{
     http::StatusCode,
-    response::Response,
+    response::{IntoResponse, Response},
     routing::{get, post},
     Router,
 };
@@ -62,7 +63,7 @@ pub fn router(state: AppState) -> Router {
     }
     router
         .route("/oauth2/callback", get(auth::authenticate))
-        .nest_service("/assets/", serve_dir)
+        .nest_service("/assets", serve_dir)
         .layer(CompressionLayer::new())
         .with_state(state)
 }
@@ -95,7 +96,7 @@ pub enum Error {
     #[error("Discord API model error")]
     DiscordApiDeserializeModel(#[from] twilight_http::response::DeserializeBodyError),
     #[error("Templating error")]
-    Tera(#[from] tera::Error),
+    Tera(#[from] askama::Error),
     #[error("Image load error")]
     Image(#[from] image::ImageError),
     #[error("OAuth2 token error")]
@@ -112,9 +113,17 @@ pub enum Error {
     NoPermissions,
     #[error("You must authenticate to use this application")]
     Unauthorized,
+    #[error("404 Page Not Found")]
+    NotFound,
 }
 
-impl axum::response::IntoResponse for Error {
+#[derive(Template)]
+#[template(path = "error.hbs", ext = "html", escape = "html")]
+struct ErrorTemplate {
+    error: Error,
+}
+
+impl IntoResponse for Error {
     fn into_response(self) -> Response {
         let status = self.status();
         if status == StatusCode::INTERNAL_SERVER_ERROR {
@@ -122,7 +131,10 @@ impl axum::response::IntoResponse for Error {
         } else {
             debug!(source = ?self, "Failed to handle request");
         }
-        (status, self.to_string()).into_response()
+
+        let err_resp = IntoResponse::into_response(ErrorTemplate { error: self });
+
+        (status, err_resp).into_response()
     }
 }
 
@@ -144,6 +156,7 @@ impl Error {
             }
             Error::NoPermissions => StatusCode::FORBIDDEN,
             Error::Unauthorized => StatusCode::UNAUTHORIZED,
+            Error::NotFound => StatusCode::NOT_FOUND,
         }
     }
 }
