@@ -14,7 +14,7 @@ COPY . .
 
 RUN cargo build --release
 
-FROM alpine
+FROM alpine:latest
 
 COPY --from=server-builder ./target/release/mod-images /usr/bin/mod-images
 COPY --from=client-builder /assets/compressed/ /var/www/mod-images/assets/
