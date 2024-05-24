@@ -31,6 +31,7 @@ async fn main() {
     start_tracing();
     let state = AppState::new().await;
     let app = router(state);
+
     let bind_address = SocketAddr::from(([0, 0, 0, 0], 8080));
     info!(%bind_address, "Binding to address");
     let tcp = TcpListener::bind(bind_address).await.unwrap();
@@ -48,10 +49,12 @@ pub fn router(state: AppState) -> Router {
         .precompressed_deflate()
         .precompressed_gzip()
         .precompressed_zstd();
+
     let mut router = Router::new()
         .route("/", get(handler::index))
         .route("/upload", post(handler::upload));
     let auth = axum::middleware::from_fn_with_state(state.clone(), auth::middleware);
+
     if std::env::var("PUBLICLY_READABLE").is_ok_and(check_truthy) {
         router = router
             .layer(auth)
@@ -61,6 +64,7 @@ pub fn router(state: AppState) -> Router {
             .route_with_tsr("/:id", get(handler::view))
             .layer(auth)
     }
+
     router
         .route("/oauth2/callback", get(auth::authenticate))
         .nest_service("/assets", serve_dir)
