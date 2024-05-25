@@ -95,16 +95,16 @@ pub async fn authenticate(
         .await?
         .model()
         .await?;
-    
+
     tokio::spawn(revoke_tokens(state.clone(), token_response));
-    
+
     let Some(guild) = guilds.first() else {
         return Err(Error::NoPermissions);
     };
     if !guild.permissions.contains(Permissions::MODERATE_MEMBERS) || guild.id != state.guild {
         return Err(Error::NoPermissions);
     }
-    
+
     let token = crate::randstring(64);
     state
         .redis
@@ -117,7 +117,7 @@ pub async fn authenticate(
         .max_age(Duration::days(1))
         .path("/")
         .build();
-    
+
     let jar = CookieJar::new().add(cookie);
     Ok((jar, Redirect::to(&roundtrip_data.redirect)))
 }
