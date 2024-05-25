@@ -153,7 +153,8 @@ impl Error {
             | Error::DiscordApiRequestValidate(_)
             | Error::DiscordApiHttp(_)
             | Error::DiscordApiDeserializeModel(_)
-            | Error::Tera(_)
+            | Error::Askama(_)
+            | Error::Json(_)
             | Error::Join(_)
             | Error::OAuth2Url(_)
             | Error::OAuth2RequestToken(_) => StatusCode::INTERNAL_SERVER_ERROR,
