@@ -1,5 +1,6 @@
 use axum::{
     extract::{Query, Request, State},
+    http::Uri,
     middleware::Next,
     response::{IntoResponse, Redirect, Response},
 };
@@ -12,30 +13,38 @@ use oauth2::{
     Scope, TokenResponse,
 };
 use redis::AsyncCommands;
+use serde::{Deserialize, Serialize};
 use time::Duration;
 use twilight_http::client::ClientBuilder;
 use twilight_model::{guild::Permissions, id::Id};
 
 use crate::{AppState, Error};
 
+#[derive(Serialize, Deserialize, Clone)]
+struct OAuth2RoundtripData {
+    pkce: String,
+    redirect: String,
+}
+
 pub async fn middleware(
     State(mut state): State<AppState>,
     cookies: CookieJar,
+    uri: Uri,
     request: Request,
     next: Next,
 ) -> Response {
     let Some(token) = cookies.get("token") else {
-        return oauthify(state).await.into_response();
+        return oauthify(state, uri).await.into_response();
     };
     let redis_key = format!("token:auth:{}", token.value());
     match state.redis_exists(&redis_key).await {
         Ok(true) => next.run(request).await,
-        Ok(false) => oauthify(state).await.into_response(),
+        Ok(false) => oauthify(state, uri).await.into_response(),
         Err(e) => e.into_response(),
     }
 }
 
-async fn oauthify(mut state: AppState) -> Result<Redirect, Error> {
+async fn oauthify(mut state: AppState, uri: Uri) -> Result<Redirect, Error> {
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
     let (auth_url, csrf_token) = state
         .oauth
@@ -45,11 +54,15 @@ async fn oauthify(mut state: AppState) -> Result<Redirect, Error> {
         .set_pkce_challenge(pkce_challenge)
         .add_extra_param("prompt", "none")
         .url();
+    let roundtrip = OAuth2RoundtripData {
+        pkce: pkce_verifier.secret().to_string(),
+        redirect: uri.path().to_string(),
+    };
     state
         .redis
         .set_ex(
             format!("token:csrf:{}", csrf_token.secret()),
-            pkce_verifier.secret(),
+            serde_json::to_string(&roundtrip)?,
             600,
         )
         .await?;
@@ -60,12 +73,13 @@ pub async fn authenticate(
     State(mut state): State<AppState>,
     Query(query): Query<SetIdQuery>,
 ) -> Result<(CookieJar, Redirect), Error> {
-    let pkce_secret = state
+    let roundtrip_data = state
         .redis
         .get_del::<String, Option<String>>(format!("token:csrf:{}", query.state))
         .await?
         .ok_or(Error::InvalidState)?;
-    let pkce_verifier = PkceCodeVerifier::new(pkce_secret);
+    let roundtrip_data: OAuth2RoundtripData = serde_json::from_str(&roundtrip_data)?;
+    let pkce_verifier = PkceCodeVerifier::new(roundtrip_data.pkce);
     let token_response = state
         .oauth
         .exchange_code(AuthorizationCode::new(query.code))
@@ -81,13 +95,16 @@ pub async fn authenticate(
         .await?
         .model()
         .await?;
+    
     tokio::spawn(revoke_tokens(state.clone(), token_response));
+    
     let Some(guild) = guilds.first() else {
         return Err(Error::NoPermissions);
     };
     if !guild.permissions.contains(Permissions::MODERATE_MEMBERS) || guild.id != state.guild {
         return Err(Error::NoPermissions);
     }
+    
     let token = crate::randstring(64);
     state
         .redis
@@ -100,8 +117,9 @@ pub async fn authenticate(
         .max_age(Duration::days(1))
         .path("/")
         .build();
+    
     let jar = CookieJar::new().add(cookie);
-    Ok((jar, Redirect::to("/")))
+    Ok((jar, Redirect::to(&roundtrip_data.redirect)))
 }
 
 #[derive(serde::Deserialize)]

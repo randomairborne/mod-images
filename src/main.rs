@@ -100,7 +100,9 @@ pub enum Error {
     #[error("Discord API model error")]
     DiscordApiDeserializeModel(#[from] twilight_http::response::DeserializeBodyError),
     #[error("Templating error")]
-    Tera(#[from] askama::Error),
+    Askama(#[from] askama::Error),
+    #[error("JSON error")]
+    Json(#[from] serde_json::Error),
     #[error("Image load error")]
     Image(#[from] image::ImageError),
     #[error("OAuth2 token error")]
