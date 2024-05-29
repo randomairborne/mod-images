@@ -91,8 +91,20 @@ async fn upload_attachments(state: AppState, interaction: Interaction) -> Result
     let mut set = JoinSet::new();
 
     let upload_id: Arc<str> = randstring(16).into();
+    let mut skipped_ctype = 0;
 
-    for (upload_seq, attachment) in message.attachments.iter().enumerate() {
+    for (upload_seq, attachment) in message
+        .attachments
+        .iter()
+        .filter(|v| {
+            let is_image = v.content_type.as_ref().is_some_and(|v| v.contains("image"));
+            if !is_image {
+                skipped_ctype += 1;
+            }
+            is_image
+        })
+        .enumerate()
+    {
         let state = state.clone();
         let id = upload_id.clone();
         set.spawn(upload_link(
@@ -116,7 +128,7 @@ async fn upload_attachments(state: AppState, interaction: Interaction) -> Result
     }
 
     Ok(Response::new(format!(
-        "Uploaded attachments: {}/{upload_id}/ ({failures} failed)",
+        "Uploaded attachments: {}/{upload_id}/ ({failures} failed. {skipped_ctype} skipped.)",
         state.root_url
     )))
 }

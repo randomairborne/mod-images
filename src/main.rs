@@ -126,6 +126,8 @@ pub enum Error {
     CodeExchangeFailed(#[from] CodeExchangeFailure),
     #[error("Missing required header with name {0}")]
     MissingHeader(&'static str),
+    #[error("WebP reported an unusual error: {0}")]
+    WebPStr(String),
     #[error("Failed to extract secure interaction")]
     InvalidSignature(#[from] signature_validation::ExtractFailure),
     #[error("Invalid OAuth2 State")]
@@ -181,6 +183,7 @@ impl Error {
             | Error::Join(_)
             | Error::OAuth2Url(_)
             | Error::OAuth2RequestToken(_)
+            | Error::WebPStr(_)
             | Error::MissingCommandData
             | Error::MissingTarget
             | Error::NoResolvedData
