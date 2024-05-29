@@ -62,8 +62,7 @@ pub fn router(state: AppState) -> Router {
 
     let mut router = Router::new()
         .route("/", get(handler::index))
-        .route("/upload", post(handler::upload))
-        .route("/interactions", post(handler::interaction));
+        .route("/upload", post(handler::upload));
     let auth = axum::middleware::from_fn_with_state(state.clone(), auth::middleware);
 
     if std::env::var("PUBLICLY_READABLE").is_ok_and(check_truthy) {
@@ -78,6 +77,7 @@ pub fn router(state: AppState) -> Router {
 
     router
         .route("/oauth2/callback", get(auth::authenticate))
+        .route("/interactions", post(handler::interaction))
         .nest_service("/assets", serve_dir)
         .layer(CompressionLayer::new())
         .with_state(state)
