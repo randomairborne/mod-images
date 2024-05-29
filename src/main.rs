@@ -21,6 +21,7 @@ pub use crate::state::AppState;
 mod auth;
 mod handler;
 mod state;
+mod upload;
 
 #[macro_use]
 extern crate tracing;

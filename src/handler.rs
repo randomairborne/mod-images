@@ -1,12 +1,9 @@
-use std::io::Cursor;
-
 use askama_axum::Template;
 use axum::{
     body::Bytes,
     extract::{Path, State},
     Json,
 };
-use image::ImageFormat;
 use serde::Serialize;
 
 use crate::{AppState, Error};
@@ -47,19 +44,7 @@ pub struct Upload {
 }
 
 pub async fn upload(State(state): State<AppState>, body: Bytes) -> Result<Json<Upload>, Error> {
-    let jpeg = tokio::task::spawn_blocking(move || convert_image(body)).await??;
-    let id = crate::randstring(16);
-    state
-        .bucket
-        .put_object_with_content_type(format!("{id}/0.jpeg"), &jpeg, "image/jpeg")
-        .await?;
-    Ok(Json(Upload { id }))
-}
-
-fn convert_image(data: Bytes) -> Result<Vec<u8>, Error> {
-    let image = image::load_from_memory(&data)?;
-    let mut output = Vec::new();
-    let mut output_cursor = Cursor::new(&mut output);
-    image.write_to(&mut output_cursor, ImageFormat::Jpeg)?;
-    Ok(output)
+    crate::upload::upload(&state, body)
+        .await
+        .map(|id| Json(Upload { id }))
 }
