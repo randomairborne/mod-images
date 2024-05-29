@@ -116,8 +116,12 @@ async fn upload_attachments(state: AppState, interaction: Interaction) -> Result
     }
 
     let mut failures = 0;
+    let mut uploaded = 0;
+
     while let Some(res) = set.join_next().await {
-        if res.is_err() || res.as_ref().is_ok_and(|output| output.is_err()) {
+        if let Ok(Ok(_)) = res {
+            uploaded += 1;
+        } else {
             failures += 1;
         }
         match res {
@@ -128,7 +132,7 @@ async fn upload_attachments(state: AppState, interaction: Interaction) -> Result
     }
 
     Ok(Response::new(format!(
-        "Uploaded attachments: {}/{upload_id}/ ({failures} failed. {skipped_ctype} skipped.)",
+        "Uploaded attachments: {}/{upload_id}/ ({uploaded} uploaded, {failures} failed, {skipped_ctype} skipped)",
         state.root_url
     )))
 }
