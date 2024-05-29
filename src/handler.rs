@@ -2,24 +2,37 @@ use askama_axum::Template;
 use axum::{
     body::Bytes,
     extract::{Path, State},
+    http::HeaderMap,
     Json,
 };
 use serde::Serialize;
+use twilight_model::{
+    http::interaction::InteractionResponse,
+    id::{marker::ApplicationMarker, Id},
+};
 
-use crate::{AppState, Error};
+use crate::{
+    signature_validation::{SIGNATURE_HEADER, TIMESTAMP_HEADER},
+    AppState, Error,
+};
 
 #[derive(Template)]
 #[template(path = "index.hbs", ext = "html", escape = "html")]
-pub struct Index;
+pub struct Index {
+    application_id: Id<ApplicationMarker>,
+}
 
-pub async fn index() -> Index {
-    Index
+pub async fn index(State(state): State<AppState>) -> Index {
+    Index {
+        application_id: state.discord.application_id,
+    }
 }
 
 #[derive(Template)]
 #[template(path = "view.hbs", ext = "html", escape = "html")]
 pub struct View {
     img_srcs: Vec<String>,
+    application_id: Id<ApplicationMarker>,
 }
 
 pub async fn view(State(state): State<AppState>, Path(id): Path<String>) -> Result<View, Error> {
@@ -35,7 +48,10 @@ pub async fn view(State(state): State<AppState>, Path(id): Path<String>) -> Resu
     if img_srcs.is_empty() {
         return Err(Error::NotFound);
     }
-    Ok(View { img_srcs })
+    Ok(View {
+        img_srcs,
+        application_id: state.discord.application_id,
+    })
 }
 
 #[derive(Serialize)]
@@ -44,7 +60,30 @@ pub struct Upload {
 }
 
 pub async fn upload(State(state): State<AppState>, body: Bytes) -> Result<Json<Upload>, Error> {
-    crate::upload::upload(&state, body)
+    crate::upload::upload(state, body)
         .await
         .map(|id| Json(Upload { id }))
+}
+
+pub async fn interaction(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Result<Json<InteractionResponse>, Error> {
+    let signature = headers
+        .get(SIGNATURE_HEADER)
+        .ok_or(Error::MissingHeader(SIGNATURE_HEADER))?;
+    let timestamp = headers
+        .get(TIMESTAMP_HEADER)
+        .ok_or(Error::MissingHeader(TIMESTAMP_HEADER))?;
+
+    let interaction = crate::signature_validation::extract_interaction(
+        signature.as_bytes(),
+        timestamp.as_bytes(),
+        body.as_ref(),
+        &state.discord.verify_key,
+    )?;
+
+    let response = crate::interact::interact(state, interaction).await;
+    Ok(Json(response))
 }

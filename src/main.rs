@@ -14,12 +14,13 @@ use oauth2::{
 use rand::{distributions::Alphanumeric, Rng};
 use tokio::net::TcpListener;
 use tower_http::{compression::CompressionLayer, services::ServeDir};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 pub use crate::state::AppState;
 
 mod auth;
 mod handler;
+mod interact;
+mod signature_validation;
 mod state;
 mod upload;
 
@@ -28,9 +29,13 @@ extern crate tracing;
 
 #[tokio::main]
 async fn main() {
-    dotenvy::dotenv().ok();
-    start_tracing();
+    tracing_subscriber::fmt().json().init();
     let state = AppState::new().await;
+
+    interact::register_commands(&state)
+        .await
+        .expect("Failed to register commands");
+
     let app = router(state);
 
     let bind_address = SocketAddr::from(([0, 0, 0, 0], 8080));
@@ -53,7 +58,8 @@ pub fn router(state: AppState) -> Router {
 
     let mut router = Router::new()
         .route("/", get(handler::index))
-        .route("/upload", post(handler::upload));
+        .route("/upload", post(handler::upload))
+        .route("/interactions", post(handler::interaction));
     let auth = axum::middleware::from_fn_with_state(state.clone(), auth::middleware);
 
     if std::env::var("PUBLICLY_READABLE").is_ok_and(check_truthy) {
@@ -114,6 +120,10 @@ pub enum Error {
     Join(#[from] tokio::task::JoinError),
     #[error("OAuth2 Code Exchange failed")]
     CodeExchangeFailed(#[from] CodeExchangeFailure),
+    #[error("Missing required header with name {0}")]
+    MissingHeader(&'static str),
+    #[error("Failed to extract secure interaction")]
+    InvalidSignature(#[from] signature_validation::ExtractFailure),
     #[error("Invalid OAuth2 State")]
     InvalidState,
     #[error("You do not have the required role to access this application")]
@@ -122,6 +132,14 @@ pub enum Error {
     Unauthorized,
     #[error("404 Page Not Found")]
     NotFound,
+    #[error("Discord did not send CommandData!")]
+    MissingCommandData,
+    #[error("Missing target ID")]
+    MissingTarget,
+    #[error("Missing discord resolved data")]
+    NoResolvedData,
+    #[error("Message not sent in resolved data")]
+    MessageNotFound,
 }
 
 #[derive(Template)]
@@ -158,31 +176,20 @@ impl Error {
             | Error::Json(_)
             | Error::Join(_)
             | Error::OAuth2Url(_)
-            | Error::OAuth2RequestToken(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Error::InvalidState | Error::CodeExchangeFailed(_) | Error::Image(_) => {
-                StatusCode::BAD_REQUEST
-            }
+            | Error::OAuth2RequestToken(_)
+            | Error::MissingCommandData
+            | Error::MissingTarget
+            | Error::NoResolvedData
+            | Error::MessageNotFound => StatusCode::INTERNAL_SERVER_ERROR,
+            Error::InvalidState
+            | Error::CodeExchangeFailed(_)
+            | Error::Image(_)
+            | Error::MissingHeader(_) => StatusCode::BAD_REQUEST,
             Error::NoPermissions => StatusCode::FORBIDDEN,
-            Error::Unauthorized => StatusCode::UNAUTHORIZED,
+            Error::Unauthorized | Error::InvalidSignature(_) => StatusCode::UNAUTHORIZED,
             Error::NotFound => StatusCode::NOT_FOUND,
         }
     }
-}
-
-pub fn start_tracing() {
-    let env_filter = tracing_subscriber::EnvFilter::builder()
-        .with_default_directive(
-            format!("{}=info", env!("CARGO_PKG_NAME").replace('-', "_"))
-                .parse()
-                .unwrap(),
-        )
-        .with_env_var("LOG")
-        .from_env()
-        .expect("failed to parse env");
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
-        .with(env_filter)
-        .init();
 }
 
 pub fn randstring(len: usize) -> String {

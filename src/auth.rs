@@ -91,7 +91,7 @@ pub async fn authenticate(
     let guilds = client
         .current_user_guilds()
         .after(Id::new(state.guild.get() - 1))
-        .limit(1)?
+        .limit(1)
         .await?
         .model()
         .await?;

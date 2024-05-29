@@ -6,16 +6,17 @@
     <title>moderator image storage</title>
     <link rel="icon" href="/assets/favicon.png" type="image/png">
     <link rel="stylesheet" href="/assets/style.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 </head>
 
 <body>
-    <nav>
-        <a href="/" class="pad-left-1ch">Home</a>
-    </nav>
-    <main>
+<nav>
+    <a href="/" class="pad-left-1ch">Home</a>
+    {% block extra_nav %} {% endblock extra_nav %}
+</nav>
+<main>
     {% block body %}{% endblock body %}
-    </main>
+</main>
 </body>
 
 </html>

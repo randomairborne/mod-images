@@ -1,18 +1,23 @@
-use std::{io::Cursor, sync::Arc};
+use std::io::Cursor;
 
 use axum::body::Bytes;
 use image::ImageFormat;
 
 use crate::{AppState, Error};
 
-pub async fn upload(state: &AppState, body: Bytes) -> Result<String, Error> {
-    let jpeg = tokio::task::spawn_blocking(move || convert_image(body)).await??;
+pub async fn upload(state: AppState, image: Bytes) -> Result<String, Error> {
     let id = crate::randstring(16);
+    upload_raw(state, &id, 0, image).await?;
+    Ok(id)
+}
+
+pub async fn upload_raw(state: AppState, id: &str, seq: u64, image: Bytes) -> Result<(), Error> {
+    let jpeg = tokio::task::spawn_blocking(move || convert_image(image)).await??;
     state
         .bucket
-        .put_object_with_content_type(format!("{id}/0.jpeg"), &jpeg, "image/jpeg")
+        .put_object_with_content_type(format!("{id}/{seq}.jpeg"), &jpeg, "image/jpeg")
         .await?;
-    Ok(id)
+    Ok(())
 }
 
 pub fn convert_image(data: Bytes) -> Result<Vec<u8>, Error> {

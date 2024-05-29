@@ -4,18 +4,21 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-twilight-validate = "0.15"
-twilight-model = "0.15"
-twilight-http = "0.15"
+twilight-util = { version = "0.16.0-rc.1", features = ["builder"] }
+twilight-http = { version = "0.16.0-rc.1", features = ["hickory"] }
+twilight-validate = "0.16.0-rc.1"
+twilight-model = "0.16.0-rc.1"
+ed25519-dalek = "2"
 askama_axum = "0.4"
-dotenvy = "0.15"
+valk-utils = "0.1"
+serde_json = "1"
 tracing = "0.1"
 thiserror = "1"
 image = "0.25"
 rand = "0.8"
 time = "0.3"
 vss = "0.1"
-serde_json = "1.0.117"
+hex = "0.4"
 
 [dependencies.axum]
 version = "0.7"
@@ -63,4 +66,4 @@ features = ["rt-multi-thread", "macros", "signal"]
 
 [dependencies.tracing-subscriber]
 version = "0.3"
-features = ["env-filter"]
+features = ["env-filter", "json"]

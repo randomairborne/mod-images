@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use oauth2::{
     basic::{
@@ -11,9 +11,13 @@ use oauth2::{
 use redis::{aio::MultiplexedConnection, AsyncCommands};
 use reqwest::{Client, ClientBuilder};
 use s3::{creds::Credentials, Bucket, Region};
-use twilight_model::id::{marker::GuildMarker, Id};
+use twilight_model::id::{
+    marker::{ApplicationMarker, GuildMarker},
+    Id,
+};
+use valk_utils::{get_var, parse_var};
 
-use crate::Error;
+use crate::{signature_validation::Key, Error};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -22,17 +26,23 @@ pub struct AppState {
     pub redis: MultiplexedConnection,
     pub guild: Id<GuildMarker>,
     pub oauth: Arc<OAuth2Client>,
+    pub discord: Arc<Discord>,
+    pub root_url: Arc<str>,
 }
 
 impl AppState {
     pub async fn new() -> Self {
         trace!("Building state");
+        let discord = Arc::new(Discord::new().await);
+        let root_url = get_root_url();
         Self {
             bucket: get_bucket().into(),
             http: get_http(),
             redis: get_redis().await,
             guild: parse_var("GUILD"),
-            oauth: get_oauth().into(),
+            oauth: get_oauth(discord.application_id, &root_url).into(),
+            discord,
+            root_url,
         }
     }
 
@@ -109,11 +119,9 @@ type OAuth2Client = oauth2::Client<
     EndpointSet,
 >;
 
-fn get_oauth() -> OAuth2Client {
-    let client_id = ClientId::new(parse_var("CLIENT_ID"));
+fn get_oauth(id: Id<ApplicationMarker>, root_url: &str) -> OAuth2Client {
+    let client_id = ClientId::new(id.to_string());
     let client_secret = ClientSecret::new(parse_var("CLIENT_SECRET"));
-    let root_url: String = parse_var("ROOT_URL");
-    let root_url = root_url.trim_end_matches('/');
     let auth_url = AuthUrl::new("https://discord.com/oauth2/authorize".to_owned()).unwrap();
     let token_url = TokenUrl::new("https://discord.com/api/oauth2/token".to_owned()).unwrap();
     let revocation_url =
@@ -128,13 +136,34 @@ fn get_oauth() -> OAuth2Client {
         .set_redirect_uri(redirect_url)
 }
 
-fn parse_var<T>(name: &str) -> T
-where
-    T: FromStr,
-    T::Err: std::fmt::Debug,
-{
-    std::env::var(name)
-        .unwrap_or_else(|_| panic!("{name} required in the environment"))
-        .parse()
-        .unwrap_or_else(|_| panic!("{name} must be a valid {}", std::any::type_name::<T>()))
+fn get_root_url() -> Arc<str> {
+    let root_url = get_var("ROOT_URL");
+    let root_url = root_url.trim_end_matches('/');
+    root_url.into()
+}
+
+pub struct Discord {
+    pub client: twilight_http::Client,
+    pub application_id: Id<ApplicationMarker>,
+    pub verify_key: Key,
+}
+
+impl Discord {
+    pub async fn new() -> Self {
+        let token = get_var("DISCORD_TOKEN");
+        let client = twilight_http::Client::new(token);
+        let application = client
+            .current_user_application()
+            .await
+            .expect("Failed to get own info")
+            .model()
+            .await
+            .expect("Failed to parse own info");
+        Self {
+            client,
+            application_id: application.id,
+            verify_key: Key::from_hex(application.verify_key.as_bytes())
+                .expect("Could not build verifying key"),
+        }
+    }
 }
