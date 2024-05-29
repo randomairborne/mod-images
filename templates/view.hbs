@@ -1,15 +1,12 @@
-{% extends "base.hbs" %}
-{% block body %}
+{% extends "base.hbs" %} {% block body %}
 <div class="center">
-    <div class="image-list">
-        {% for img_src in img_srcs %}
-        <div class="image-container">
-            <img src="{{ img_src }}" class="image">
-        </div>
-        {% endfor %}
+  <div class="image-list">
+    {% for img_src in img_srcs %}
+    <div class="image-container">
+      <img src="{{img_src}}" class="image" />
     </div>
+    {% endfor %}
+  </div>
 </div>
-{% endblock body %}
-{% block extra_nav %}
-{% include "invite.hbs" %}
-{% endblock extra_nav %}
+{% endblock body %} {% block extra_nav %} {% include "invite.hbs" %} {% endblock
+extra_nav %}

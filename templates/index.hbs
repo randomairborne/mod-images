@@ -1,10 +1,8 @@
-{% extends "base.hbs" %}
-{% block body %}
+{% extends "base.hbs" %} {% block body %}
 <script defer src="/assets/index.js"></script>
 <div class="droparea center" id="drop-area">
-    <img src="/assets/photo.svg" class="dropicon"/> Drop file here..
+  <img src="/assets/photo.svg" class="dropicon" />
+  Drop file here..
 </div>
-{% endblock body %}
-{% block extra_nav %}
-{% include "invite.hbs" %}
-{% endblock extra_nav %}
+{% endblock body %} {% block extra_nav %} {% include "invite.hbs" %} {% endblock
+extra_nav %}
