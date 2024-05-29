@@ -11,26 +11,46 @@ use twilight_model::{
     channel::message::MessageFlags,
     http::interaction::{InteractionResponse, InteractionResponseType},
 };
-use twilight_util::builder::{command::CommandBuilder, InteractionResponseDataBuilder};
+use twilight_util::builder::{
+    command::CommandBuilder,
+    embed::{EmbedBuilder, EmbedFieldBuilder},
+    InteractionResponseDataBuilder,
+};
 
 use crate::{randstring, upload::upload_raw, AppState, Error};
 
 const UPLOAD_COMMAND_NAME: &str = "Save Attached Images";
 
 struct Response {
-    content: String,
+    description: String,
+    fields: Vec<(String, String)>,
 }
 
 impl Response {
-    pub fn new(content: String) -> Self {
-        Self { content }
+    pub fn new(description: String) -> Self {
+        Self {
+            description,
+            fields: Vec::new(),
+        }
+    }
+
+    pub fn add_field(&mut self, title: String, content: String) {
+        self.fields.push((title, content));
     }
 
     pub fn interaction_response(self) -> InteractionResponse {
+        let mut embed = EmbedBuilder::new().description(self.description);
+        for (title, content) in self.fields {
+            let field = EmbedFieldBuilder::new(title, content).inline().build();
+            embed = embed.field(field);
+        }
+        let embed = embed.build();
+
         let data = InteractionResponseDataBuilder::new()
             .flags(MessageFlags::EPHEMERAL)
-            .content(self.content)
+            .embeds([embed])
             .build();
+
         InteractionResponse {
             kind: InteractionResponseType::ChannelMessageWithSource,
             data: Some(data),
@@ -131,10 +151,24 @@ async fn upload_attachments(state: AppState, interaction: Interaction) -> Result
         };
     }
 
-    Ok(Response::new(format!(
-        "Uploaded attachments: {}/{upload_id}/ ({uploaded} uploaded, {failures} failed, {skipped_ctype} skipped)",
-        state.root_url
-    )))
+    let content = if uploaded == 0 {
+        "Found no attachments".to_string()
+    } else {
+        format!(
+            "Uploaded {uploaded} attachments: <{}/{upload_id}/>",
+            state.root_url
+        )
+    };
+
+    let mut response = Response::new(content);
+    if skipped_ctype != 0 {
+        response.add_field("Skipped".to_string(), skipped_ctype.to_string());
+    }
+    if failures != 0 {
+        response.add_field("Failed".to_string(), failures.to_string());
+    }
+
+    Ok(response)
 }
 
 #[instrument(skip_all)]
