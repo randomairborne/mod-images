@@ -14,6 +14,7 @@ use oauth2::{
 use rand::{distributions::Alphanumeric, Rng};
 use tokio::net::TcpListener;
 use tower_http::{compression::CompressionLayer, services::ServeDir};
+use tracing::Level;
 
 pub use crate::state::AppState;
 
@@ -29,7 +30,10 @@ extern crate tracing;
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt().json().init();
+    tracing_subscriber::fmt()
+        .with_max_level(Level::TRACE)
+        .json()
+        .init();
     let state = AppState::new().await;
 
     interact::register_commands(&state)

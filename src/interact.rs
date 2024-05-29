@@ -64,6 +64,7 @@ async fn command(state: AppState, interaction: Interaction) -> Response {
         })
 }
 
+#[instrument(skip(state))]
 async fn upload_link(
     state: AppState,
     id: Arc<str>,
@@ -75,6 +76,7 @@ async fn upload_link(
     Ok(())
 }
 
+#[instrument(skip_all)]
 async fn upload_attachments(state: AppState, interaction: Interaction) -> Result<Response, Error> {
     let Some(InteractionData::ApplicationCommand(data)) = interaction.data else {
         return Err(Error::MissingCommandData);
@@ -119,6 +121,7 @@ async fn upload_attachments(state: AppState, interaction: Interaction) -> Result
     )))
 }
 
+#[instrument(skip_all)]
 pub async fn register_commands(state: &AppState) -> Result<(), Error> {
     // This horribleness brought to you by Advaith and Discord's fucking horrendous GA policies
     let command_struct = CommandBuilder::new(UPLOAD_COMMAND_NAME, "", CommandType::Message).build();
