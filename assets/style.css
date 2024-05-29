@@ -58,6 +58,14 @@ main {
     max-height: 90vh;
 }
 
+.image-list {
+    display: flex;
+}
+
+.image-container {
+    display: block;
+}
+
 .droparea {
     height: 90vh;
     width: 100%;

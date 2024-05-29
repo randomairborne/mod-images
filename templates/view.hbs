@@ -1,9 +1,13 @@
 {% extends "base.hbs" %}
 {% block body %}
 <div class="center">
-    {% for img_src in img_srcs %}
-    <img src="{{ img_src }}" class="image">
-    {% endfor %}
+    <div class="image-list">
+        {% for img_src in img_srcs %}
+        <div class="image-container">
+            <img src="{{ img_src }}" class="image">
+        </div>
+        {% endfor %}
+    </div>
 </div>
 {% endblock body %}
 {% block extra_nav %}
