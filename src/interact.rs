@@ -9,6 +9,7 @@ use twilight_model::{
         interaction::{Interaction, InteractionData, InteractionType},
     },
     channel::message::MessageFlags,
+    guild::Permissions,
     http::interaction::{InteractionResponse, InteractionResponseType},
 };
 use twilight_util::builder::{
@@ -174,7 +175,9 @@ async fn upload_attachments(state: AppState, interaction: Interaction) -> Result
 #[instrument(skip_all)]
 pub async fn register_commands(state: &AppState) -> Result<(), Error> {
     // This horribleness brought to you by Advaith and Discord's fucking horrendous GA policies
-    let command_struct = CommandBuilder::new(UPLOAD_COMMAND_NAME, "", CommandType::Message).build();
+    let command_struct = CommandBuilder::new(UPLOAD_COMMAND_NAME, "", CommandType::Message)
+        .default_member_permissions(Permissions::READ_MESSAGE_HISTORY)
+        .build();
     let mut command_value = serde_json::to_value(command_struct)?;
     let Some(cmd_value_object) = command_value.as_object_mut() else {
         unreachable!("Serializing a struct and getting not-a-map should be impossible");
