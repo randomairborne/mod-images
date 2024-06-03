@@ -53,7 +53,7 @@ async fn oauthify(mut state: AppState, uri: Uri) -> Result<Redirect, Error> {
         .add_scope(Scope::new("guilds".to_string()))
         .set_pkce_challenge(pkce_challenge)
         .add_extra_param("prompt", "none")
-        .add_extra_param("integration_types", "1")
+        //.add_extra_param("integration_types", "1") // this was breaking it, and we disabled the command anyway
         .url();
     let roundtrip = OAuth2RoundtripData {
         pkce: pkce_verifier.secret().to_string(),
