@@ -9,6 +9,7 @@ use twilight_model::{
         interaction::{Interaction, InteractionData, InteractionType},
     },
     channel::message::MessageFlags,
+    guild::Permissions,
     http::interaction::{InteractionResponse, InteractionResponseType},
 };
 use twilight_util::builder::{
@@ -96,10 +97,15 @@ async fn upload_link(
     Ok(())
 }
 
-#[instrument(skip_all)]
-#[allow(unreachable_code, unused_variables)]
+#[instrument(skip(state))]
 async fn upload_attachments(state: AppState, interaction: Interaction) -> Result<Response, Error> {
-    return Ok(Response::new("There's no good way to enforce that only users who have permissions to use a user command can use it, so this has been disabled for now.".to_string()));
+    if !interaction.guild_id.is_some_and(|g| g == state.guild)
+        || !interaction
+            .app_permissions
+            .is_some_and(|p| p.contains(Permissions::MODERATE_MEMBERS))
+    {
+        return Ok(Response::new("There's no good way to enforce that only users who have permissions to use a user command can use it, so this has been disabled for now outside the main server.".to_string()));
+    }
     let Some(InteractionData::ApplicationCommand(data)) = interaction.data else {
         return Err(Error::MissingCommandData);
     };
