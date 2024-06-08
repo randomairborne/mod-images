@@ -3,11 +3,8 @@ use std::{net::SocketAddr, sync::Arc};
 use askama_axum::Template;
 use axum::{
     body::Body,
-    extract::{Request, State},
-    http::{
-        header::{ACCEPT, CONTENT_LENGTH, CONTENT_TYPE},
-        HeaderValue, StatusCode,
-    },
+    extract::Request,
+    http::StatusCode,
     middleware::Next,
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -22,7 +19,7 @@ use tokio::net::TcpListener;
 use tower_http::{compression::CompressionLayer, services::ServeDir};
 use tower_sombrero::{
     csp::CspNonce,
-    headers::{ContentSecurityPolicy, CspSchemeSource, CspSource},
+    headers::{ContentSecurityPolicy, CspSource},
     Sombrero,
 };
 use tracing::Level;
