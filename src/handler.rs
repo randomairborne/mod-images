@@ -6,6 +6,7 @@ use axum::{
     Json,
 };
 use serde::Serialize;
+use tower_sombrero::csp::CspNonce;
 use twilight_model::{
     http::interaction::InteractionResponse,
     id::{marker::ApplicationMarker, Id},
@@ -20,11 +21,13 @@ use crate::{
 #[template(path = "index.hbs", ext = "html", escape = "html")]
 pub struct Index {
     application_id: Id<ApplicationMarker>,
+    nonce: String,
 }
 
-pub async fn index(State(state): State<AppState>) -> Index {
+pub async fn index(State(state): State<AppState>, CspNonce(nonce): CspNonce) -> Index {
     Index {
         application_id: state.discord.application_id,
+        nonce,
     }
 }
 
@@ -33,9 +36,14 @@ pub async fn index(State(state): State<AppState>) -> Index {
 pub struct View {
     img_srcs: Vec<String>,
     application_id: Id<ApplicationMarker>,
+    nonce: String,
 }
 
-pub async fn view(State(state): State<AppState>, Path(id): Path<String>) -> Result<View, Error> {
+pub async fn view(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    CspNonce(nonce): CspNonce,
+) -> Result<View, Error> {
     let bucket_listing = state.bucket.list(format!("{id}/"), None).await?;
     let mut img_srcs = Vec::new();
     for listing in bucket_listing {
@@ -51,6 +59,7 @@ pub async fn view(State(state): State<AppState>, Path(id): Path<String>) -> Resu
     Ok(View {
         img_srcs,
         application_id: state.discord.application_id,
+        nonce,
     })
 }
 

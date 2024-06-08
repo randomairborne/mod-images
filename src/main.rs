@@ -1,11 +1,17 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 
 use askama_axum::Template;
 use axum::{
-    http::StatusCode,
+    body::Body,
+    extract::{Request, State},
+    http::{
+        header::{ACCEPT, CONTENT_LENGTH, CONTENT_TYPE},
+        HeaderValue, StatusCode,
+    },
+    middleware::Next,
     response::{IntoResponse, Response},
     routing::{get, post},
-    Router,
+    Extension, RequestExt, Router,
 };
 use axum_extra::routing::RouterExt;
 use oauth2::{
@@ -14,6 +20,11 @@ use oauth2::{
 use rand::{distributions::Alphanumeric, Rng};
 use tokio::net::TcpListener;
 use tower_http::{compression::CompressionLayer, services::ServeDir};
+use tower_sombrero::{
+    csp::CspNonce,
+    headers::{ContentSecurityPolicy, CspSchemeSource, CspSource},
+    Sombrero,
+};
 use tracing::Level;
 
 pub use crate::state::AppState;
@@ -60,6 +71,16 @@ pub fn router(state: AppState) -> Router {
         .precompressed_gzip()
         .precompressed_zstd();
 
+    let csp = ContentSecurityPolicy::strict_default()
+        .script_src([
+            CspSource::Nonce,
+            CspSource::StrictDynamic,
+            CspSource::UnsafeInline,
+        ])
+        .style_src(CspSource::Nonce)
+        .img_src([CspSource::Host(state.bucket.url()), CspSource::SelfOrigin]);
+    let sombrero = Sombrero::default().content_security_policy(csp);
+
     let mut router = Router::new()
         .route("/", get(handler::index))
         .route("/upload", post(handler::upload));
@@ -80,6 +101,8 @@ pub fn router(state: AppState) -> Router {
         .route("/interactions", post(handler::interaction))
         .nest_service("/assets", serve_dir)
         .layer(CompressionLayer::new())
+        .layer(axum::middleware::from_fn(error_middleware))
+        .layer(sombrero)
         .with_state(state)
 }
 
@@ -151,7 +174,8 @@ pub enum Error {
 #[derive(Template)]
 #[template(path = "error.hbs", ext = "html", escape = "html")]
 struct ErrorTemplate {
-    error: Error,
+    error: Arc<Error>,
+    nonce: String,
 }
 
 impl IntoResponse for Error {
@@ -163,9 +187,7 @@ impl IntoResponse for Error {
             debug!(source = ?self, "Failed to handle request");
         }
 
-        let err_resp = IntoResponse::into_response(ErrorTemplate { error: self });
-
-        (status, err_resp).into_response()
+        (status, Extension(Arc::new(self)), Body::empty()).into_response()
     }
 }
 
@@ -196,6 +218,21 @@ impl Error {
             Error::Unauthorized | Error::InvalidSignature(_) => StatusCode::UNAUTHORIZED,
             Error::NotFound => StatusCode::NOT_FOUND,
         }
+    }
+}
+
+async fn error_middleware(mut req: Request, next: Next) -> Response {
+    let nonce = match req.extract_parts::<CspNonce>().await {
+        Ok(CspNonce(n)) => n,
+        Err(err) => return err.into_response(),
+    };
+    let resp = next.run(req).await;
+    if let Some(error) = resp.extensions().get::<Arc<Error>>().cloned() {
+        let status = error.status();
+        let error = ErrorTemplate { error, nonce };
+        (status, error).into_response()
+    } else {
+        resp
     }
 }
 
