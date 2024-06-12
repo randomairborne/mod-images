@@ -3,14 +3,22 @@
   <head>
     <meta charset="utf-8" />
     <title>moderator image storage</title>
-    <link rel="icon" href="/assets/favicon.png" type="image/png" />
-    <link rel="stylesheet" href="/assets/style.css" nonce="{{ nonce }}" />
+    <link
+      rel="icon"
+      href="{{ root_url }}/assets/favicon.png"
+      type="image/png"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ root_url }}/assets/style.css"
+      nonce="{{ nonce }}"
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   </head>
 
   <body>
     <nav>
-      <a href="/" class="pad-left-1ch">Home</a>
+      <a href="{{ root_url }}/" class="pad-left-1ch">Home</a>
       {% block extra_nav %}{% endblock extra_nav %}
     </nav>
     <main>{% block body %}{% endblock body %}</main>

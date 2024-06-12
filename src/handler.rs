@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use askama_axum::Template;
 use axum::{
     body::Bytes,
@@ -20,12 +22,14 @@ use crate::{
 #[derive(Template)]
 #[template(path = "index.hbs", ext = "html", escape = "html")]
 pub struct Index {
+    root_url: Arc<str>,
     application_id: Id<ApplicationMarker>,
     nonce: String,
 }
 
 pub async fn index(State(state): State<AppState>, CspNonce(nonce): CspNonce) -> Index {
     Index {
+        root_url: state.root_url,
         application_id: state.discord.application_id,
         nonce,
     }
@@ -34,6 +38,7 @@ pub async fn index(State(state): State<AppState>, CspNonce(nonce): CspNonce) -> 
 #[derive(Template)]
 #[template(path = "view.hbs", ext = "html", escape = "html")]
 pub struct View {
+    root_url: Arc<str>,
     img_srcs: Vec<String>,
     application_id: Id<ApplicationMarker>,
     nonce: String,
@@ -57,6 +62,7 @@ pub async fn view(
         return Err(Error::NotFound);
     }
     Ok(View {
+        root_url: state.root_url,
         img_srcs,
         application_id: state.discord.application_id,
         nonce,

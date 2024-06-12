@@ -3,7 +3,7 @@ use std::{net::SocketAddr, sync::Arc};
 use askama_axum::Template;
 use axum::{
     body::Body,
-    extract::Request,
+    extract::{Request, State},
     http::StatusCode,
     middleware::Next,
     response::{IntoResponse, Response},
@@ -75,6 +75,7 @@ pub fn router(state: AppState) -> Router {
             CspSource::UnsafeInline,
         ])
         .style_src(CspSource::Nonce)
+        .base_uri(CspSource::None)
         .img_src([CspSource::Host(state.bucket.url()), CspSource::SelfOrigin]);
     let sombrero = Sombrero::default().content_security_policy(csp);
 
@@ -98,7 +99,10 @@ pub fn router(state: AppState) -> Router {
         .route("/interactions", post(handler::interaction))
         .nest_service("/assets", serve_dir)
         .layer(CompressionLayer::new())
-        .layer(axum::middleware::from_fn(error_middleware))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            error_middleware,
+        ))
         .layer(sombrero)
         .with_state(state)
 }
@@ -171,6 +175,7 @@ pub enum Error {
 #[derive(Template)]
 #[template(path = "error.hbs", ext = "html", escape = "html")]
 struct ErrorTemplate {
+    root_url: Arc<str>,
     error: Arc<Error>,
     nonce: String,
 }
@@ -218,7 +223,7 @@ impl Error {
     }
 }
 
-async fn error_middleware(mut req: Request, next: Next) -> Response {
+async fn error_middleware(State(state): State<AppState>, mut req: Request, next: Next) -> Response {
     let nonce = match req.extract_parts::<CspNonce>().await {
         Ok(CspNonce(n)) => n,
         Err(err) => return err.into_response(),
@@ -226,7 +231,11 @@ async fn error_middleware(mut req: Request, next: Next) -> Response {
     let resp = next.run(req).await;
     if let Some(error) = resp.extensions().get::<Arc<Error>>().cloned() {
         let status = error.status();
-        let error = ErrorTemplate { error, nonce };
+        let error = ErrorTemplate {
+            root_url: state.root_url,
+            error,
+            nonce,
+        };
         (status, error).into_response()
     } else {
         resp

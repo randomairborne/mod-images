@@ -1,70 +1,74 @@
 {% extends "base.hbs" %}
 {% block body %}
   <div class="droparea center" id="drop-area">
-    <img src="/assets/photo.svg" class="dropicon" />
+    <img
+      src="{{ root_url }}/assets/photo.svg"
+      alt="An icon which represents a photograph."
+      class="dropicon"
+    />
     Drop file here..
   </div>
-  <script nonce="{{ nonce }}">
-    const droparea = document.getElementById("drop-area");
+  <div id="root-url" data-root-url="{{ root_url }}">
+    <script nonce="{{ nonce }}">
+      const dropArea = document.getElementById("drop-area");
+      const rootUrl = document.getElementById("root-url").dataset.rootUrl;
 
-    async function handleDrop(event) {
-      const loader = document.createElement("span");
-      loader.classList.add("loader");
-      droparea.replaceChildren(loader);
-      let files = [];
-      if (event.dataTransfer.items) {
-        [...event.dataTransfer.items].forEach((item, i) => {
-          if (item.kind === "file") {
-            const file = item.getAsFile();
+      async function handleDrop(event) {
+        const loader = document.createElement("span");
+        loader.classList.add("loader");
+        dropArea.replaceChildren(loader);
+        let files = [];
+        if (event.dataTransfer.items) {
+          [...event.dataTransfer.items].forEach((item, i) => {
+            if (item.kind === "file") {
+              const file = item.getAsFile();
+              files = [...files, file];
+            }
+          });
+        } else {
+          [...event.dataTransfer.files].forEach((file, i) => {
             files = [...files, file];
-          }
+          });
+        }
+        if (files.length !== 1) {
+          alert("You may only upload one file at a time");
+          window.location.reload();
+        }
+        const request = await fetch(`${rootUrl}/upload`, {
+          body: files[0],
+          method: "POST",
         });
-      } else {
-        [...event.dataTransfer.files].forEach((file, i) => {
-          files = [...files, file];
-        });
+        const json = await request.json();
+        const id = json["id"];
+        window.location.pathname = `${rootUrl}/${id}`;
       }
-      if (files.length !== 1) {
-        alert("You may only upload one file at a time");
-        window.location.reload();
+
+      function onDrop(event) {
+        event.preventDefault();
+        handleDrop(event).then((v) => v);
       }
-      const request = await fetch("/upload", {
-        body: files[0],
-        method: "POST",
-      });
-      const json = await request.json();
-      const id = json["id"];
-      window.location.pathname = `/${id}`;
-    }
 
-    function onDrop(event) {
-      event.preventDefault();
-      handleDrop(event).then((v) => v);
-    }
+      function onDragOver(event) {
+        event.preventDefault();
+      }
 
-    function onDragOver(event) {
-      event.preventDefault();
-    }
+      function onDragEnter(event) {
+        event.preventDefault();
+        dropArea.classList.add("file-hovered");
+      }
 
-    function onDragEnter(event) {
-      event.preventDefault();
-      droparea.classList.add("file-hovered");
-    }
+      function onDragLeave(event) {
+        event.preventDefault();
+        dropArea.classList.remove("file-hovered");
+      }
 
-    function onDragLeave(event) {
-      event.preventDefault();
-      droparea.classList.remove("file-hovered");
-    }
-
-    droparea.addEventListener("drop", onDrop);
-    droparea.addEventListener("dragover", onDragOver);
-    droparea.addEventListener("dragenter", onDragEnter);
-    droparea.addEventListener("dragenter", onDragLeave);
-  </script>
+      dropArea.addEventListener("drop", onDrop);
+      dropArea.addEventListener("dragover", onDragOver);
+      dropArea.addEventListener("dragenter", onDragEnter);
+      dropArea.addEventListener("dragenter", onDragLeave);
+    </script>
+  </div>
 {% endblock body %}
 {% block extra_nav %}
   {% include "invite.hbs" %}
-{%
-  endblock
-  extra_nav
-%}
+{% endblock extra_nav %}
