@@ -100,9 +100,10 @@ async fn upload_link(
 #[instrument(skip(state))]
 async fn upload_attachments(state: AppState, interaction: Interaction) -> Result<Response, Error> {
     if !interaction.guild_id.is_some_and(|g| g == state.guild)
-        || !interaction
-            .app_permissions
-            .is_some_and(|p| p.contains(Permissions::MODERATE_MEMBERS))
+        || !interaction.member.is_some_and(|m| {
+            m.permissions
+                .is_some_and(|p| p.contains(Permissions::MODERATE_MEMBERS))
+        })
     {
         return Ok(Response::new("There's no good way to enforce that only users who have permissions to use a user command can use it, so this has been disabled for now outside the main server.".to_string()));
     }
