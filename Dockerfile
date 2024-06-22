@@ -1,6 +1,5 @@
 ARG LLVMTARGETARCH
 FROM --platform=${BUILDPLATFORM} ghcr.io/randomairborne/cross-cargo-${LLVMTARGETARCH}:latest AS server-builder
-
 ARG LLVMTARGETARCH
 
 WORKDIR /build
@@ -18,6 +17,7 @@ COPY assets uncompressed
 RUN asset-squisher uncompressed compressed --no-compress-images
 
 FROM alpine:latest
+ARG LLVMTARGETARCH
 
 COPY --from=server-builder ./target/${LLVMTARGETARCH}-unknown-linux-musl/release/mod-images /usr/bin/mod-images
 COPY --from=client-builder /assets/compressed/ /var/www/mod-images/assets/
