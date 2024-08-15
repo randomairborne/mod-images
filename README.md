@@ -12,7 +12,9 @@ If you need this hosted, don't hesitate to [reach out](https://www.randomairborn
 - `S3_ENDPOINT`: AWS S3 endpoint
 - `S3_REGION`: S3 region- set to `auto` for R2
 - `S3_ACCESS_KEY_ID`: S3 access key ID, from AWS. Needs PUT and presigned GET permissions, with CORS allowed
-  for `ROOT_URL`
+  for `ROOT_URL`. For example, were your site to be hosted at https://mod-images.example.com, you would
+  need to add the `Access-Control-Allow-Origin` header with the value `https://mod-images.example.com` or
+  `*`.
 - `S3_SECRET_ACCESS_KEY`: S3 secret
 - `REDIS_URL`: Redis URL, used only to store OAuth2 tokens
 - `GUILD`: Snowflake ID of the guild you want to check `MANAGE_MESSAGES` permissions in
