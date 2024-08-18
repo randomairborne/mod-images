@@ -13,10 +13,10 @@ pub async fn upload(state: AppState, image: Bytes) -> Result<String, Error> {
 #[instrument(skip(state, image))]
 pub async fn upload_raw(state: AppState, id: &str, seq: u64, image: Bytes) -> Result<(), Error> {
     let webp = tokio::task::spawn_blocking(move || convert_image(image)).await??;
-    trace!("Encoded JPEG, uploading");
+    trace!("Encoded webp, uploading");
     state
         .bucket
-        .put_object_with_content_type(format!("{id}/{seq}.jpeg"), &webp, "image/webp")
+        .put_object_with_content_type(format!("{id}/{seq}.webp"), &webp, "image/webp")
         .await?;
     Ok(())
 }
