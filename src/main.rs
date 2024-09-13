@@ -80,7 +80,7 @@ pub fn router(state: AppState) -> Router {
         .img_src([CspSource::Host(state.bucket.url()), CspSource::SelfOrigin]);
     let sombrero = Sombrero::default().content_security_policy(csp);
 
-    let mut router = Router::new()
+    let router = Router::new()
         .route("/", get(handler::index))
         .route("/upload", post(handler::upload));
     let auth = axum::middleware::from_fn_with_state(state.clone(), auth::middleware);
