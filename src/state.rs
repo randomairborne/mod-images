@@ -20,6 +20,7 @@ use valk_utils::{get_var, parse_var};
 use crate::{signature_validation::Key, Error};
 
 #[derive(Clone)]
+#[allow(clippy::module_name_repetitions)]
 pub struct AppState {
     pub bucket: Arc<Bucket>,
     pub http: Client,
@@ -51,10 +52,12 @@ impl AppState {
         Ok(value.is_some())
     }
 
+    #[must_use]
     pub fn asset_dir() -> String {
         std::env::var("ASSET_DIR").unwrap_or_else(|_v| "./assets/".to_string())
     }
 
+    #[must_use]
     pub fn template_dir() -> String {
         std::env::var("TEMPLATE_DIR").unwrap_or_else(|_v| "./templates/".to_string())
     }
