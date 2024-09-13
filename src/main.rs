@@ -1,3 +1,4 @@
+#![warn(clippy::all, clippy::nursery, clippy::pedantic)]
 use std::{net::SocketAddr, sync::Arc};
 
 use askama_axum::Template;
@@ -196,29 +197,29 @@ impl IntoResponse for Error {
 impl Error {
     fn status(&self) -> StatusCode {
         match self {
-            Error::S3(_)
-            | Error::Redis(_)
-            | Error::Http(_)
-            | Error::DiscordApiRequestValidate(_)
-            | Error::DiscordApiHttp(_)
-            | Error::DiscordApiDeserializeModel(_)
-            | Error::Askama(_)
-            | Error::Json(_)
-            | Error::Join(_)
-            | Error::OAuth2Url(_)
-            | Error::OAuth2RequestToken(_)
-            | Error::WebPStr(_)
-            | Error::MissingCommandData
-            | Error::MissingTarget
-            | Error::NoResolvedData
-            | Error::MessageNotFound => StatusCode::INTERNAL_SERVER_ERROR,
-            Error::InvalidState
-            | Error::CodeExchangeFailed(_)
-            | Error::Image(_)
-            | Error::MissingHeader(_) => StatusCode::BAD_REQUEST,
-            Error::NoPermissions => StatusCode::FORBIDDEN,
-            Error::Unauthorized | Error::InvalidSignature(_) => StatusCode::UNAUTHORIZED,
-            Error::NotFound => StatusCode::NOT_FOUND,
+            Self::S3(_)
+            | Self::Redis(_)
+            | Self::Http(_)
+            | Self::DiscordApiRequestValidate(_)
+            | Self::DiscordApiHttp(_)
+            | Self::DiscordApiDeserializeModel(_)
+            | Self::Askama(_)
+            | Self::Json(_)
+            | Self::Join(_)
+            | Self::OAuth2Url(_)
+            | Self::OAuth2RequestToken(_)
+            | Self::WebPStr(_)
+            | Self::MissingCommandData
+            | Self::MissingTarget
+            | Self::NoResolvedData
+            | Self::MessageNotFound => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::InvalidState
+            | Self::CodeExchangeFailed(_)
+            | Self::Image(_)
+            | Self::MissingHeader(_) => StatusCode::BAD_REQUEST,
+            Self::NoPermissions => StatusCode::FORBIDDEN,
+            Self::Unauthorized | Self::InvalidSignature(_) => StatusCode::UNAUTHORIZED,
+            Self::NotFound => StatusCode::NOT_FOUND,
         }
     }
 }
