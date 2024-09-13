@@ -43,6 +43,7 @@ impl std::error::Error for SigError {
 /// the public key provided by Discord, this is almost definitely because
 /// you received an invalid request.
 #[derive(Debug)]
+#[allow(clippy::module_name_repetitions)]
 pub enum SignatureValidationFailure {
     /// The request signature was invalid hexadecimal.
     Hex(FromHexError),

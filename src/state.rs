@@ -47,6 +47,7 @@ impl AppState {
         }
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub async fn redis_exists(&mut self, key: &str) -> Result<bool, Error> {
         let value: Option<bool> = self.redis.get(key).await?;
         Ok(value.is_some())
