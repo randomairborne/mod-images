@@ -195,7 +195,7 @@ impl IntoResponse for Error {
 }
 
 impl Error {
-    fn status(&self) -> StatusCode {
+    const fn status(&self) -> StatusCode {
         match self {
             Self::S3(_)
             | Self::Redis(_)
