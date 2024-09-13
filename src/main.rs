@@ -85,15 +85,18 @@ pub fn router(state: AppState) -> Router {
         .route("/upload", post(handler::upload));
     let auth = axum::middleware::from_fn_with_state(state.clone(), auth::middleware);
 
-    if std::env::var("PUBLICLY_READABLE").is_ok_and(check_truthy) {
-        router = router
+    let router = if std::env::var("PUBLICLY_READABLE")
+        .as_deref()
+        .is_ok_and(check_truthy)
+    {
+        router
             .layer(auth)
             .route_with_tsr("/:id", get(handler::view))
     } else {
-        router = router
+        router
             .route_with_tsr("/:id", get(handler::view))
             .layer(auth)
-    }
+    };
 
     router
         .route("/oauth2/callback", get(auth::authenticate))
@@ -108,7 +111,7 @@ pub fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
-fn check_truthy(data: String) -> bool {
+fn check_truthy(data: &str) -> bool {
     let d = data.to_ascii_lowercase();
     !(d == "f" || d == "false" || d == "0" || d == "n" || d == "no")
 }
