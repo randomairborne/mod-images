@@ -59,7 +59,7 @@ async fn oauthify(mut state: AppState, uri: Uri) -> Result<Redirect, Error> {
         pkce: pkce_verifier.secret().to_string(),
         redirect: uri.path().to_string(),
     };
-    state
+    let _: () = state
         .redis
         .set_ex(
             format!("token:csrf:{}", csrf_token.secret()),
@@ -107,7 +107,7 @@ pub async fn authenticate(
     }
 
     let token = crate::randstring(64);
-    state
+    let _: () = state
         .redis
         .set_ex(format!("token:auth:{token}"), true, 86400)
         .await?;
