@@ -129,6 +129,7 @@ pub struct SetIdQuery {
     state: String,
 }
 
+#[expect(clippy::unused_async)]
 async fn revoke_tokens(state: AppState, token_response: BasicTokenResponse) {
     tokio::spawn(async move {
         if let Some(rt) = token_response.refresh_token() {
