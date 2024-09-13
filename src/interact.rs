@@ -28,7 +28,7 @@ struct Response {
 }
 
 impl Response {
-    pub fn new(description: String) -> Self {
+    pub const fn new(description: String) -> Self {
         Self {
             description,
             fields: Vec::new(),
@@ -65,9 +65,9 @@ pub async fn interact(state: AppState, interaction: Interaction) -> InteractionR
             kind: InteractionResponseType::Pong,
             data: None,
         },
-        InteractionType::ApplicationCommand => {
-            command(state, interaction).await.interaction_response()
-        }
+        InteractionType::ApplicationCommand => Box::pin(command(state, interaction))
+            .await
+            .interaction_response(),
         _ => unsupported(),
     }
 }
@@ -148,7 +148,7 @@ async fn upload_attachments(state: AppState, interaction: Interaction) -> Result
     let mut uploaded = 0;
 
     while let Some(res) = set.join_next().await {
-        if let Ok(Ok(_)) = res {
+        if matches!(res, Ok(Ok(()))) {
             uploaded += 1;
         } else {
             failures += 1;
