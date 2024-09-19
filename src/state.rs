@@ -88,7 +88,8 @@ fn get_http() -> Client {
         .user_agent(concat!(
             env!("CARGO_PKG_NAME"),
             "/",
-            env!("CARGO_PKG_VERSION")
+            env!("CARGO_PKG_VERSION"),
+            " (+https://github.com/randomairborne/mod-images)"
         ))
         .build()
         .unwrap()
