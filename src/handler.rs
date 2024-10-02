@@ -54,7 +54,7 @@ pub async fn view(
     for listing in bucket_listing {
         img_srcs.reserve(listing.contents.len());
         for file in listing.contents {
-            let url = state.bucket.presign_get(file.key, 10, None)?;
+            let url = state.bucket.presign_get(file.key, 10, None).await?;
             img_srcs.push(url);
         }
     }

@@ -64,7 +64,7 @@ impl AppState {
     }
 }
 
-fn get_bucket() -> Bucket {
+fn get_bucket() -> Box<Bucket> {
     trace!("Connecting to S3");
     let name: String = parse_var("BUCKET_NAME");
     let endpoint = parse_var("S3_ENDPOINT");
