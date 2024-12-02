@@ -41,7 +41,7 @@ features = ["rustls-tls", "reqwest"]
 default-features = false
 
 [dependencies.tower-http]
-version = "0.5"
+version = "0.6"
 features = ["compression-full", "fs"]
 
 [dependencies.axum-extra]
