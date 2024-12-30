@@ -64,7 +64,7 @@ impl AppState {
     }
 }
 
-fn get_bucket() -> Box<Bucket> {
+fn get_bucket() -> Bucket {
     trace!("Connecting to S3");
     let name: String = parse_var("BUCKET_NAME");
     let endpoint = parse_var("S3_ENDPOINT");
@@ -80,7 +80,7 @@ fn get_bucket() -> Box<Bucket> {
         None,
     )
     .unwrap();
-    Bucket::new(&name, region, credentials).unwrap()
+    *Bucket::new(&name, region, credentials).unwrap()
 }
 
 fn get_http() -> Client {

@@ -99,7 +99,7 @@ async fn upload_link(
 
 #[instrument(skip(state))]
 async fn upload_attachments(state: AppState, interaction: Interaction) -> Result<Response, Error> {
-    if !interaction.guild_id.is_some_and(|g| g == state.guild)
+    if interaction.guild_id.is_none_or(|g| g != state.guild)
         || !interaction.member.is_some_and(|m| {
             m.permissions
                 .is_some_and(|p| p.contains(Permissions::MODERATE_MEMBERS))
