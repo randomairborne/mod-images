@@ -1,16 +1,15 @@
 use std::sync::Arc;
 
-use serde_json::json;
 use tokio::task::JoinSet;
-use twilight_http::{request::Request, routing::Route};
 use twilight_model::{
     application::{
-        command::{Command, CommandType},
-        interaction::{Interaction, InteractionData, InteractionType},
+        command::CommandType,
+        interaction::{Interaction, InteractionContextType, InteractionData, InteractionType},
     },
     channel::message::MessageFlags,
     guild::Permissions,
     http::interaction::{InteractionResponse, InteractionResponseType},
+    oauth::ApplicationIntegrationType,
 };
 use twilight_util::builder::{
     command::CommandBuilder,
@@ -182,25 +181,18 @@ async fn upload_attachments(state: AppState, interaction: Interaction) -> Result
 
 #[instrument(skip_all)]
 pub async fn register_commands(state: &AppState) -> Result<(), Error> {
-    // This horribleness brought to you by Advaith and Discord's fucking horrendous GA policies
-    let command_struct = CommandBuilder::new(UPLOAD_COMMAND_NAME, "", CommandType::Message).build();
-    let mut command_value = serde_json::to_value(command_struct)?;
-    let Some(cmd_value_object) = command_value.as_object_mut() else {
-        unreachable!("Serializing a struct and getting not-a-map should be impossible");
-    };
-
-    cmd_value_object.insert("integration_types".to_string(), json!([1]));
-    cmd_value_object.insert("contexts".to_string(), json!([0, 1, 2]));
-
-    let request = Request::builder(&Route::SetGlobalCommands {
-        application_id: state.discord.application_id.get(),
-    })
-    .json(&json!([cmd_value_object]))
-    .build()?;
+    let upload_command = CommandBuilder::new(UPLOAD_COMMAND_NAME, "", CommandType::Message)
+        .integration_types([ApplicationIntegrationType::UserInstall])
+        .contexts([
+            InteractionContextType::Guild,
+            InteractionContextType::PrivateChannel,
+        ])
+        .build();
     state
         .discord
         .client
-        .request::<Vec<Command>>(request)
+        .interaction(state.discord.application_id)
+        .set_global_commands(&[upload_command])
         .await?;
     Ok(())
 }
