@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use askama_axum::Template;
+use askama::Template;
 use axum::{
     body::Bytes,
     extract::{Path, State},
@@ -16,27 +16,30 @@ use twilight_model::{
 
 use crate::{
     signature_validation::{SIGNATURE_HEADER, TIMESTAMP_HEADER},
-    AppState, Error,
+    AppState, Error, TemplateWrapper,
 };
 
 #[derive(Template)]
-#[template(path = "index.hbs", ext = "html", escape = "html")]
+#[template(path = "index.hbs", escape = "html")]
 pub struct Index {
     root_url: Arc<str>,
     application_id: Id<ApplicationMarker>,
     nonce: String,
 }
 
-pub async fn index(State(state): State<AppState>, CspNonce(nonce): CspNonce) -> Index {
-    Index {
+pub async fn index(
+    State(state): State<AppState>,
+    CspNonce(nonce): CspNonce,
+) -> TemplateWrapper<Index> {
+    TemplateWrapper(Index {
         root_url: state.root_url,
         application_id: state.discord.application_id,
         nonce,
-    }
+    })
 }
 
 #[derive(Template)]
-#[template(path = "view.hbs", ext = "html", escape = "html")]
+#[template(path = "view.hbs", escape = "html")]
 pub struct View {
     root_url: Arc<str>,
     img_srcs: Vec<String>,
@@ -48,7 +51,7 @@ pub async fn view(
     State(state): State<AppState>,
     Path(id): Path<String>,
     CspNonce(nonce): CspNonce,
-) -> Result<View, Error> {
+) -> Result<TemplateWrapper<View>, Error> {
     let bucket_listing = state.bucket.list(format!("{id}/"), None).await?;
     let mut img_srcs = Vec::new();
     for listing in bucket_listing {
@@ -61,12 +64,12 @@ pub async fn view(
     if img_srcs.is_empty() {
         return Err(Error::NotFound);
     }
-    Ok(View {
+    Ok(TemplateWrapper(View {
         root_url: state.root_url,
         img_srcs,
         application_id: state.discord.application_id,
         nonce,
-    })
+    }))
 }
 
 #[derive(Serialize)]

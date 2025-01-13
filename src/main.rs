@@ -1,13 +1,13 @@
 #![warn(clippy::all, clippy::nursery, clippy::pedantic)]
 use std::{net::SocketAddr, sync::Arc};
 
-use askama_axum::Template;
+use askama::Template;
 use axum::{
     body::Body,
     extract::{Request, State},
     http::StatusCode,
     middleware::Next,
-    response::{IntoResponse, Response},
+    response::{Html, IntoResponse, Response},
     routing::{get, post},
     Extension, RequestExt, Router,
 };
@@ -177,7 +177,7 @@ pub enum Error {
 }
 
 #[derive(Template)]
-#[template(path = "error.hbs", ext = "html", escape = "html")]
+#[template(path = "error.hbs", escape = "html")]
 struct ErrorTemplate {
     root_url: Arc<str>,
     error: Arc<Error>,
@@ -227,6 +227,20 @@ impl Error {
     }
 }
 
+pub struct TemplateWrapper<T>(pub T);
+
+impl<T> IntoResponse for TemplateWrapper<T>
+where
+    T: askama::Template,
+{
+    fn into_response(self) -> Response {
+        match self.0.render() {
+            Ok(v) => Html(v).into_response(),
+            Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Templating failed").into_response(),
+        }
+    }
+}
+
 async fn error_middleware(State(state): State<AppState>, mut req: Request, next: Next) -> Response {
     let nonce = match req.extract_parts::<CspNonce>().await {
         Ok(CspNonce(n)) => n,
@@ -235,11 +249,11 @@ async fn error_middleware(State(state): State<AppState>, mut req: Request, next:
     let resp = next.run(req).await;
     if let Some(error) = resp.extensions().get::<Arc<Error>>().cloned() {
         let status = error.status();
-        let error = ErrorTemplate {
+        let error = TemplateWrapper(ErrorTemplate {
             root_url: state.root_url,
             error,
             nonce,
-        };
+        });
         (status, error).into_response()
     } else {
         resp
