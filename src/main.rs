@@ -234,10 +234,10 @@ where
     T: askama::Template,
 {
     fn into_response(self) -> Response {
-        match self.0.render() {
-            Ok(v) => Html(v).into_response(),
-            Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Templating failed").into_response(),
-        }
+        self.0.render().map_or_else(
+            |_| (StatusCode::INTERNAL_SERVER_ERROR, "Templating failed").into_response(),
+            |v| Html(v).into_response(),
+        )
     }
 }
 
