@@ -15,7 +15,7 @@ use axum_extra::routing::RouterExt;
 use oauth2::{
     basic::BasicErrorResponseType, HttpClientError, RequestTokenError, StandardErrorResponse,
 };
-use rand::{distributions::Alphanumeric, Rng};
+use rand::{distr::Alphanumeric, Rng};
 use tokio::net::TcpListener;
 use tower_http::{compression::CompressionLayer, services::ServeDir};
 use tower_sombrero::{
@@ -261,7 +261,7 @@ async fn error_middleware(State(state): State<AppState>, mut req: Request, next:
 }
 
 pub fn randstring(len: usize) -> String {
-    rand::thread_rng()
+    rand::rng()
         .sample_iter(Alphanumeric)
         .take(len)
         .map(char::from)
