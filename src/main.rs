@@ -91,10 +91,10 @@ pub fn router(state: AppState) -> Router {
     {
         router
             .layer(auth)
-            .route_with_tsr("/:id", get(handler::view))
+            .route_with_tsr("/{id}", get(handler::view))
     } else {
         router
-            .route_with_tsr("/:id", get(handler::view))
+            .route_with_tsr("/{id}", get(handler::view))
             .layer(auth)
     };
 
