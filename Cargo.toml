@@ -45,7 +45,7 @@ version = "0.10"
 features = ["cookie"]
 
 [dependencies.redis]
-version = "0.28"
+version = "0.29"
 features = ["ahash", "aio", "tokio-comp", "acl", "json", "cluster"]
 default-features = false
 
