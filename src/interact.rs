@@ -156,7 +156,7 @@ async fn upload_attachments(state: AppState, interaction: Interaction) -> Result
             Err(source) => error!(?source, "S3 uploader panicked"),
             Ok(Err(source)) => error!(?source, "S3 uploader failed"),
             Ok(Ok(())) => {}
-        };
+        }
     }
 
     let content = if uploaded == 0 {
