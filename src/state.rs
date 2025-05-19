@@ -55,12 +55,12 @@ impl AppState {
 
     #[must_use]
     pub fn asset_dir() -> String {
-        std::env::var("ASSET_DIR").unwrap_or_else(|_v| "./assets/".to_string())
+        valk_utils::parse_var_or_else("ASSET_DIR", || "assets".to_string())
     }
 
     #[must_use]
     pub fn template_dir() -> String {
-        std::env::var("TEMPLATE_DIR").unwrap_or_else(|_v| "./templates/".to_string())
+        valk_utils::parse_var_or_else("TEMPLATE_DIR", || "templates".to_string())
     }
 }
 
