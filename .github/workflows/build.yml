@@ -92,14 +92,3 @@ jobs:
         run: |
           docker buildx imagetools create --tag ${{ env.REGISTRY_IMAGE }}:latest $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
 
-  deploy:
-    needs: [merge]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions-hub/kubectl@master
-        env:
-          KUBE_HOST: ${{ secrets.KUBE_HOST }}
-          KUBE_CERTIFICATE: ${{ secrets.KUBE_CERTIFICATE }}
-          KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
-        with:
-          args: -n mod-images set image deployment/mod-images mod-images=${{ env.REGISTRY_IMAGE }}:git-${{ github.sha }}
