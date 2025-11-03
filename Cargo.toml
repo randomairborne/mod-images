@@ -41,8 +41,8 @@ version = "0.6"
 features = ["compression-full", "fs"]
 
 [dependencies.axum-extra]
-version = "0.10"
-features = ["cookie"]
+version = "0.12"
+features = ["cookie", "routing"]
 
 [dependencies.redis]
 version = "0.32"
