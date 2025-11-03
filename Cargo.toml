@@ -27,7 +27,7 @@ version = "0.8"
 features = ["macros"]
 
 [dependencies.rust-s3]
-version = "0.35"
+version = "0.37"
 features = ["tags", "tokio-rustls-tls", "fail-on-err"]
 default-features = false
 
