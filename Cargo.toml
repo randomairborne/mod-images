@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-twilight-util = { version = "0.16", features = ["builder"] }
-twilight-http = { version = "0.16", features = ["hickory"] }
+twilight-util = { version = "0.17", features = ["builder"] }
+twilight-http = { version = "0.17", features = ["hickory"] }
 tower-sombrero = { version = "0.1", features = ["axum"] }
-twilight-validate = "0.16"
-twilight-model = "0.16"
+twilight-validate = "0.17"
+twilight-model = "0.17"
 ed25519-dalek = "2"
 valk-utils = "0.1"
 serde_json = "1"
