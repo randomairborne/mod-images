@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+twilight-http = { version = "0.17", features = ["hickory", "rustls-webpki-roots"] }
 twilight-util = { version = "0.17", features = ["builder"] }
-twilight-http = { version = "0.17", features = ["hickory"] }
 tower-sombrero = { version = "0.1", features = ["axum"] }
+rustls = { version = "0.23", features = ["aws_lc_rs"] }
 twilight-validate = "0.17"
 twilight-model = "0.17"
 ed25519-dalek = "2"
